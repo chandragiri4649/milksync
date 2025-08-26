@@ -11,9 +11,14 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const adminRoleMiddleware = require("../middlewares/adminRoleMiddleware");
 const adminOrStaffMiddleware = require("../middlewares/adminOrStaffMiddleware");
 
-// --- Public admin login ---
+// --- Public admin login and recovery ---
 
 router.post("/login", adminController.login);
+
+// Password reset and recovery routes (public - no authentication required)
+router.post("/request-reset", adminController.requestPasswordReset);
+router.post("/reset-password", adminController.resetPassword);
+router.post("/recover-username", adminController.recoverUsername);
 
 // --- Protect all below as admin-only ---
 router.use(authMiddleware, adminRoleMiddleware);
