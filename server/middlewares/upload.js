@@ -31,11 +31,4 @@ const upload = multer({
   }
 });
 
-// Add debugging middleware
-const debugUpload = (req, res, next) => {
-  console.log("🔍 Multer middleware - Request body before multer:", req.body);
-  console.log("🔍 Multer middleware - Request files:", req.files);
-  next();
-};
-
-module.exports = { upload, debugUpload };
+module.exports = { upload };
