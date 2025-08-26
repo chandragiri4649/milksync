@@ -29,7 +29,7 @@ const emailConfig = {
 };
 
 // Create transporter
-const transporter = nodemailer.createTransporter(emailConfig);
+const transporter = nodemailer.createTransport(emailConfig);
 
 /**
  * Send OTP email for password reset
