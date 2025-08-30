@@ -49,7 +49,12 @@ exports.getDistributorBills = async (req, res) => {
         unit: item.unit,
         price: item.price,
         total: item.total
-      }))
+      })),
+      // Include damaged products information
+      damagedProducts: bill.damagedProducts || [],
+      totalDamagedCost: bill.totalDamagedCost || 0,
+      updatedBy: bill.updatedBy || null,
+      updatedAt: bill.updatedAt || null
     }));
 
     res.json(transformedBills);

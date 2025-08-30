@@ -1,0 +1,27 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Ensure staff dashboard pages have proper scrolling */
+.staff-dashboard-page,
+.staff-dashboard-page body,
+.staff-dashboard-page html {
+  overflow: visible !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Ensure staff navbar pages have proper scrolling */
+.staff-navbar-page,
+.staff-navbar-page body,
+.staff-navbar-page html {
+  overflow: visible !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}

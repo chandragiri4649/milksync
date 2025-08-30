@@ -1,0 +1,588 @@
+/* BillsHistory.css - Modern styling for bills history component */
+
+/* Card hover effects */
+.card {
+  transition: all 0.3s ease;
+  border-radius: 12px !important;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Summary cards specific styling */
+.summary-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.summary-card .card-header {
+  border-radius: 0;
+  font-weight: 600;
+}
+
+.summary-card .card-body {
+  padding: 1.5rem 1rem;
+}
+
+.summary-card h3 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Search and filter section */
+.search-filter-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.search-filter-card .card-header {
+  border-radius: 0;
+}
+
+.search-filter-card .form-control,
+.search-filter-card .form-select {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.search-filter-card .form-control:focus,
+.search-filter-filter .form-select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(181, 234, 215, 0.25); /* Light Green shadow */
+  border-color: #B5EAD7; /* Light Green border */
+}
+
+/* View mode toggle buttons */
+.view-mode-toggle .btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.view-mode-toggle .btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Bill cards specific styling */
+.bill-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.bill-card .card-header {
+  border-radius: 0;
+  padding: 1rem;
+}
+
+.bill-card .card-body {
+  padding: 1.5rem;
+}
+
+.bill-card .card-footer {
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+  border-top: 1px solid #E5E7EB; /* Light gray border */
+  padding: 1rem 1.5rem;
+}
+
+/* Status badges */
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+}
+
+.status-badge.locked {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%); /* Light Green gradient */
+  color: #374151; /* Dark gray text */
+}
+
+/* New CSS classes for inline styles from BillsHistory.jsx */
+
+/* Header icon container */
+.header-icon-container {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+  border-radius: 50% !important;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+/* Header title */
+.header-title {
+  color: #374151;
+}
+
+/* Summary card borders */
+.summary-card-total-bills {
+  border: 2px solid #B5EAD7;
+}
+
+.summary-card-locked-bills {
+  border: 2px solid #FFE066;
+}
+
+.summary-card-editable-bills {
+  border: 2px solid #AEE9F7;
+}
+
+.summary-card-total-amount {
+  border: 2px solid #FFB3BA;
+}
+
+/* Summary card headers */
+.summary-card-header-total-bills {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+}
+
+.summary-card-header-locked-bills {
+  background: linear-gradient(135deg, #FFE066 0%, #E6D9B8 100%);
+}
+
+.summary-card-header-editable-bills {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%);
+}
+
+.summary-card-header-total-amount {
+  background: linear-gradient(135deg, #FFB3BA 0%, #E6D9B8 100%);
+}
+
+/* Summary card content */
+.summary-card-content {
+  color: #000000;
+}
+
+/* Search filter header */
+.search-filter-header {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+}
+
+/* Form labels */
+.form-label-custom {
+  color: #B5EAD7;
+}
+
+/* Form controls */
+.form-control-custom {
+  border: 2px solid #B5EAD7;
+  border-radius: 8px;
+}
+
+.form-select-custom {
+  border: 2px solid #B5EAD7;
+  border-radius: 8px;
+}
+
+/* Buttons */
+.btn-clear {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+  border: none;
+  border-radius: 8px;
+}
+
+.btn-export {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%);
+  border: none;
+  border-radius: 8px;
+}
+
+/* Empty state */
+.empty-state-icon {
+  width: 80px;
+  height: 80px;
+}
+
+/* Bill card borders */
+.bill-card-border {
+  border: 2px solid #B5EAD7;
+}
+
+.bill-card-header {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+}
+
+/* Bill info text */
+.bill-info-text {
+  color: #000000;
+}
+
+/* Bill info icon */
+.bill-info-icon {
+  width: 16px;
+  color: #000000;
+}
+
+/* Bill items header */
+.bill-items-header {
+  color: #000000;
+}
+
+/* Bill items icon */
+.bill-items-icon {
+  color: #000000;
+}
+
+/* Generated date */
+.generated-date {
+  color: #000000;
+}
+
+/* Total amount */
+.total-amount {
+  color: #000000;
+}
+
+/* Table headers */
+.table-header {
+  color: #000000;
+}
+
+/* Table icons */
+.table-icon {
+  color: #000000;
+}
+
+/* Product summary icon */
+.product-summary-icon {
+  font-size: 0.4rem;
+  color: #000000;
+}
+
+/* More items text */
+.more-items-text {
+  color: #000000;
+}
+
+/* Status badge icon */
+.status-badge-icon {
+  color: #000000;
+}
+
+/* Action button icon */
+.action-button-icon {
+  color: #000000;
+}
+
+/* View modal */
+.view-modal {
+  background-color: rgba(0,0,0,0.5);
+}
+
+.view-modal-header {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%);
+}
+
+.view-modal-icon {
+  color: #000000;
+  font-size: 1.2rem;
+}
+
+.view-modal-title {
+  color: #000000;
+}
+
+.view-modal-content {
+  color: #000000;
+}
+
+.view-modal-footer {
+  border: 0;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  color: #000000;
+}
+
+.loading-text {
+  color: #000000;
+}
+
+/* Empty state text */
+.empty-state-title {
+  color: #000000;
+}
+
+.empty-state-description {
+  color: #000000;
+}
+
+/* Alert info */
+.alert-info-icon {
+  color: #000000;
+}
+
+/* View mode toggle icons */
+.view-mode-icon {
+  color: #000000;
+}
+
+/* Search icon */
+.search-icon {
+  color: #000000;
+}
+
+/* Filter icons */
+.filter-icon {
+  color: #000000;
+}
+
+/* Button icons */
+.button-icon {
+  color: #000000;
+}
+
+/* Summary card icons */
+.summary-card-icon {
+  color: #000000;
+}
+
+/* Bill card icons */
+.bill-card-icon {
+  color: #000000;
+}
+
+/* Table row icons */
+.table-row-icon {
+  color: #000000;
+}
+
+/* Modal content text */
+.modal-content-text {
+  color: #000000;
+}
+
+/* Modal table headers */
+.modal-table-header {
+  color: #000000;
+}
+
+/* Modal table content */
+.modal-table-content {
+  color: #000000;
+}
+
+/* Modal status badge */
+.modal-status-badge {
+  color: #000000;
+}
+
+/* Table styling */
+.bills-table {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.bills-table .table {
+  margin-bottom: 0;
+}
+
+.bills-table .table th {
+  border-top: none;
+  font-weight: 600;
+  padding: 1rem 0.75rem;
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+}
+
+.bills-table .table td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+}
+
+.bills-table .table tbody tr:hover {
+  background-color: rgba(181, 234, 215, 0.05); /* Light Green hover */
+}
+
+/* Product summary in table */
+.product-summary {
+  max-width: 200px;
+}
+
+.product-summary .fas.fa-circle {
+  color: #B5EAD7; /* Light Green */
+}
+
+/* Action buttons */
+.action-btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  color: #B5EAD7; /* Light Green */
+}
+
+/* Empty state */
+.empty-state {
+  padding: 3rem 1rem;
+}
+
+.empty-state .empty-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%); /* Light Green gradient */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.empty-state .empty-icon i {
+  color: #374151; /* Dark gray text */
+  font-size: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .summary-card h3 {
+    font-size: 2rem;
+  }
+  
+  .bill-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .row > div {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Animation for cards appearing */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.bill-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.bill-card:nth-child(1) { animation-delay: 0.1s; }
+.bill-card:nth-child(2) { animation-delay: 0.2s; }
+.bill-card:nth-child(3) { animation-delay: 0.3s; }
+.bill-card:nth-child(4) { animation-delay: 0.4s; }
+.bill-card:nth-child(5) { animation-delay: 0.5s; }
+.bill-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* Export button animation */
+.export-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.export-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.export-btn:hover::before {
+  left: 100%;
+}
+
+/* Filter clear button hover effect */
+.clear-btn:hover {
+  background: linear-gradient(135deg, #20c997 0%, #28a745 100%) !important;
+}
+
+/* Table row hover effect */
+.bills-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.bills-table tbody tr:hover {
+  background-color: rgba(40, 167, 69, 0.08);
+  transform: scale(1.01);
+}
+
+/* Badge animations */
+.badge {
+  transition: all 0.3s ease;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Form control focus states */
+.form-control:focus,
+.form-select:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+/* Button group styling */
+.btn-group-toggle .btn {
+  border-radius: 8px;
+  margin: 0 0.25rem;
+}
+
+.btn-group-toggle .btn.active {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  border-color: #28a745;
+  color: white;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .table-responsive {
+    border-radius: 15px;
+    overflow: hidden;
+  }
+  
+  .bills-table .table th,
+  .bills-table .table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .product-summary {
+    max-width: 150px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .search-filter-card,
+  .view-mode-toggle,
+  .action-btn {
+    display: none !important;
+  }
+  
+  .bill-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #dee2e6 !important;
+  }
+  
+  .summary-card {
+    break-inside: avoid;
+  }
+}

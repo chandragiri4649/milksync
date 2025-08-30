@@ -1,0 +1,651 @@
+/* StaffNavbar.css */
+.staff-navbar {
+  background-color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000;
+  margin-bottom: 0;
+  width: 100%;
+  left: 0;
+  right: 0;
+  /* Ensure sticky works properly */
+  will-change: transform;
+  transform: translateZ(0);
+  /* Force hardware acceleration */
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  /* Additional sticky support */
+  -webkit-position: sticky;
+  -moz-position: sticky;
+  -ms-position: sticky;
+  -o-position: sticky;
+  /* Ensure proper stacking context */
+  isolation: isolate;
+  /* Prevent any transform interference */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Additional sticky properties */
+  position: -webkit-sticky !important;
+  position: -moz-sticky !important;
+  position: -ms-sticky !important;
+  position: -o-sticky !important;
+  position: sticky !important;
+  /* Ensure proper display */
+  display: block !important;
+  /* Force top positioning */
+  top: 0 !important;
+  /* Ensure proper width */
+  min-width: 100vw;
+  /* Ensure proper styling */
+  border: none;
+
+}
+
+/* Ensure parent containers don't interfere with sticky */
+.staff-panel-page {
+  position: relative;
+  overflow: visible;
+  /* Remove any transform that might interfere */
+  transform: none;
+  /* Ensure proper stacking */
+  z-index: auto;
+}
+
+.staff-main-content {
+  position: relative;
+  overflow: visible;
+  /* Remove any transform that might interfere */
+  transform: none;
+  /* Ensure proper stacking */
+  z-index: auto;
+}
+
+/* Force sticky behavior even if parent has transforms */
+.staff-navbar {
+  position: -webkit-sticky !important;
+  position: -moz-sticky !important;
+  position: -ms-sticky !important;
+  position: -o-sticky !important;
+  position: sticky !important;
+}
+
+/* Additional sticky support for older browsers */
+@supports (position: sticky) {
+  .staff-navbar {
+    position: sticky !important;
+  }
+}
+
+@supports not (position: sticky) {
+  .staff-navbar {
+    position: fixed !important;
+    top: 0 !important;
+  }
+}
+
+/* Ensure proper scrolling behavior for staff panel */
+.staff-panel-page {
+  overflow: visible !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  /* Ensure proper stacking context */
+  position: relative;
+  z-index: auto;
+}
+
+/* Force the navbar to stay at top during scroll */
+.staff-navbar {
+  /* Ensure sticky works in all scenarios */
+  position: -webkit-sticky !important;
+  position: -moz-sticky !important;
+  position: -ms-sticky !important;
+  position: -o-sticky !important;
+  position: sticky !important;
+  /* Force top positioning */
+  top: 0 !important;
+  /* Ensure proper stacking */
+  z-index: 1000 !important;
+  /* Ensure proper width */
+  width: 100% !important;
+  min-width: 100vw;
+  /* Force display */
+  display: block !important;
+  /* Remove any potential interference */
+  float: none !important;
+  clear: both !important;
+}
+
+/* Ensure content flows properly below sticky navbar */
+.staff-main-content {
+  /* Remove any top margin that might interfere */
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  /* Ensure proper positioning */
+  position: relative;
+  z-index: auto;
+}
+
+/* Mobile-specific sticky behavior */
+@media (max-width: 768px) {
+  .staff-navbar {
+    /* Ensure sticky works on mobile */
+    position: -webkit-sticky !important;
+    position: -moz-sticky !important;
+    position: -ms-sticky !important;
+    position: -o-sticky !important;
+    position: sticky !important;
+    /* Force top positioning on mobile */
+    top: 0 !important;
+    /* Ensure proper stacking on mobile */
+    z-index: 1000 !important;
+    /* Ensure full width on mobile */
+    width: 100% !important;
+    min-width: 100vw;
+    /* Force display on mobile */
+    display: block !important;
+  }
+  
+  /* Ensure mobile menu doesn't interfere with sticky */
+  .staff-mobile-menu {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 999 !important;
+  }
+}
+
+/* Additional mobile sticky support */
+@media (max-width: 480px) {
+  .staff-navbar {
+    /* Ensure sticky works on small mobile devices */
+    position: -webkit-sticky !important;
+    position: -moz-sticky !important;
+    position: -ms-sticky !important;
+    position: -o-sticky !important;
+    position: sticky !important;
+    /* Force top positioning on small mobile */
+    top: 0 !important;
+    /* Ensure proper stacking on small mobile */
+    z-index: 1000 !important;
+  }
+}
+
+/* Browser-specific sticky support */
+@supports (-webkit-appearance: none) {
+  .staff-navbar {
+    /* WebKit browsers (Safari, Chrome) */
+    position: -webkit-sticky !important;
+    position: sticky !important;
+  }
+}
+
+@supports (-moz-appearance: none) {
+  .staff-navbar {
+    /* Firefox */
+    position: -moz-sticky !important;
+    position: sticky !important;
+  }
+}
+
+@supports (-ms-ime-align: auto) {
+  .staff-navbar {
+    /* Internet Explorer */
+    position: -ms-sticky !important;
+    position: sticky !important;
+  }
+}
+
+/* Fallback for browsers that don't support sticky */
+@supports not (position: sticky) {
+  .staff-navbar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Add padding to body to prevent content from being hidden */
+  body {
+    padding-top: 120px !important;
+  }
+}
+
+/* Ensure sticky works in all scroll containers */
+.staff-navbar {
+  /* Force sticky behavior */
+  position: -webkit-sticky !important;
+  position: -moz-sticky !important;
+  position: -ms-sticky !important;
+  position: -o-sticky !important;
+  position: sticky !important;
+  /* Ensure proper positioning */
+  top: 0 !important;
+  /* Ensure proper stacking */
+  z-index: 1000 !important;
+  /* Ensure proper width */
+  width: 100% !important;
+  min-width: 100vw;
+  /* Force display */
+  display: block !important;
+  /* Remove any potential interference */
+  float: none !important;
+  clear: both !important;
+  /* Ensure proper scrolling context */
+  contain: layout style paint;
+}
+
+/* Performance optimizations for sticky behavior */
+.staff-navbar {
+  /* Optimize for sticky positioning */
+  will-change: transform;
+  transform: translateZ(0);
+  /* Force hardware acceleration */
+  -webkit-transform: translateZ(0);
+  -moz-transform: translateZ(0);
+  -ms-transform: translateZ(0);
+  -o-transform: translateZ(0);
+  /* Ensure smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent any layout shifts */
+  box-sizing: border-box;
+  /* Ensure proper rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Final sticky positioning override */
+.staff-navbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  width: 100% !important;
+  display: block !important;
+}
+
+/* Reduce spacing after navbar */
+.staff-navbar + * {
+  margin-top: 0.5rem !important;
+}
+
+/* Global spacing reduction */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Reduce default margins for main content */
+main, .main-content, .content-area {
+  margin-top: 0.5rem !important;
+  padding-top: 0.5rem !important;
+}
+
+/* Specific spacing for dashboard components */
+.staff-dashboard, .dashboard-container, .dashboard-content {
+  margin-top: 0.5rem !important;
+  padding-top: 0.5rem !important;
+}
+
+/* Reduce spacing for any cards or content below navbar */
+.staff-navbar ~ * {
+  margin-top: 0.5rem !important;
+}
+
+/* Target specific dashboard card */
+.staff-dashboard-card, .dashboard-card, [class*="dashboard"] {
+  margin-top: 0.5rem !important;
+}
+
+/* Target the specific Staff Dashboard welcome card */
+.staff-dashboard-card, .dashboard-card, [class*="dashboard"], 
+[class*="welcome"], [class*="card"], [class*="container"] {
+  margin-top: 0.25rem !important;
+  padding-top: 0.25rem !important;
+}
+
+/* More aggressive spacing reduction for dashboard content */
+.staff-navbar ~ div, .staff-navbar ~ section, .staff-navbar ~ main {
+  margin-top: 0.25rem !important;
+}
+
+/* Target any element containing "Staff Dashboard" text */
+div:contains("Staff Dashboard"), 
+div:contains("Welcome"), 
+div:contains("Manage your orders") {
+  margin-top: 0.25rem !important;
+}
+
+/* Reduce spacing for the main content area */
+.staff-navbar + * > * {
+  margin-top: 0.25rem !important;
+}
+
+/* Target the main content wrapper */
+.staff-navbar ~ * {
+  margin-top: 0.25rem !important;
+}
+
+/* Target any card or container that might contain the dashboard content */
+.card, .container, .content, .main, .dashboard, .welcome {
+  margin-top: 0.25rem !important;
+}
+
+/* Force minimal spacing for all content below navbar */
+.staff-navbar + * {
+  margin-top: 0.25rem !important;
+}
+
+/* Target the specific Staff Dashboard text elements */
+h1:contains("Staff Dashboard"), 
+h2:contains("Staff Dashboard"), 
+p:contains("Welcome"), 
+div:contains("Welcome") {
+  margin-top: 0.25rem !important;
+}
+
+/* Header Section */
+.staff-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0.4rem 0;
+}
+
+.staff-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.staff-header-icon {
+  font-size: 1.5rem;
+  color: #007bff;
+}
+
+.staff-header-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #212529;
+  margin: 0;
+}
+
+/* Navigation Bar */
+.staff-navigation {
+  background-color: #ffffff;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.staff-nav-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  padding-right: 8rem; /* Make space for logout button */
+  position: relative;
+}
+
+.staff-nav-button {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  text-decoration: none;
+  color: #212529;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  max-width: 140px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.staff-nav-button:hover {
+  background-color: #f8f9fa;
+  border-color: #007bff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.staff-nav-button.active {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  color: #1976d2;
+  border-width: 2px;
+}
+
+.staff-nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0;
+  display: block !important;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.staff-nav-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  display: block !important;
+  flex-shrink: 0;
+}
+
+/* Logout Button */
+.staff-logout-button {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  background-color: #dc3545;
+  border: none;
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+  max-width: 140px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  gap: 0.5rem;
+}
+
+.staff-logout-button:hover {
+  background-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.staff-logout-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0;
+  display: block;
+  flex-shrink: 0;
+}
+
+.staff-logout-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+/* Mobile Toggle Button */
+.staff-mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: #007bff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  position: absolute;
+  top: 0.75rem;
+  right: 1rem;
+  z-index: 1001;
+  transition: all 0.3s ease;
+  border-radius: 4px;
+  background-color: #ffffff;
+  border: 1px solid #e9ecef;
+}
+
+.staff-mobile-toggle:hover {
+  background-color: #f8f9fa;
+  transform: scale(1.1);
+}
+
+/* Mobile Navigation Menu */
+.staff-navbar .staff-mobile-menu {
+  display: none !important;
+  background-color: #ffffff;
+  border-top: 1px solid #e9ecef;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+/* Show mobile menu when open */
+.staff-navbar .staff-mobile-menu.open {
+  display: block !important;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.staff-mobile-link {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: #212529;
+  border-bottom: 1px solid #f8f9fa;
+  transition: background-color 0.3s ease;
+}
+
+.staff-mobile-link:hover {
+  background-color: #f8f9fa;
+}
+
+.staff-mobile-link.active {
+  background-color: #e3f2fd;
+  color: #1976d2;
+  font-weight: 500;
+}
+
+.staff-mobile-logout {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #dc3545;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 0.5rem;
+}
+
+.staff-mobile-logout:hover {
+  background-color: #c82333;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .staff-mobile-menu {
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 1000 !important;
+    border-top: 1px solid #e9ecef;
+    max-height: 80vh;
+    overflow-y: auto;
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+  }
+  
+  .staff-mobile-link {
+    border-bottom: 1px solid #f8f9fa;
+  }
+  
+  .staff-mobile-link:last-of-type {
+    border-bottom: none;
+  }
+  
+  /* Ensure mobile menu is above other content */
+  .staff-mobile-menu.open {
+    z-index: 1002 !important;
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  /* Hide desktop navigation on mobile */
+  .staff-nav-buttons {
+    display: none;
+  }
+  
+  /* Hide desktop logout button on mobile */
+  .staff-logout-button {
+    display: none;
+  }
+  
+  .staff-mobile-toggle {
+    display: block;
+  }
+  
+  .staff-header-content {
+    padding-right: 4rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .staff-header-title {
+    font-size: 1.25rem;
+  }
+  
+  .staff-header-icon {
+    font-size: 1.5rem;
+  }
+  
+  .staff-nav-text,
+  .staff-logout-text {
+    font-size: 0.7rem;
+  }
+  
+  .staff-nav-button,
+  .staff-logout-button {
+    min-width: 90px;
+    max-width: 100px;
+    padding: 0.4rem 0.6rem;
+  }
+}

@@ -1,0 +1,224 @@
+/* AdminLogin.css - Styles for the Admin Login component */
+
+/* Prevent body scrolling */
+body {
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-login-container {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%);
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-login-bg-element-1 {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  animation: rotate 20s linear infinite;
+  pointer-events: none;
+}
+
+.admin-login-bg-element-2 {
+  position: absolute;
+  top: 50%;
+  right: -25%;
+  width: 50%;
+  height: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+  animation: float 15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Form wrapper for proper centering */
+.admin-login-form-wrapper {
+  position: relative;
+  z-index: 20;
+  width: 100%;
+  max-width: 400px;
+  padding: 0 20px;
+}
+
+.admin-login-card {
+  border-radius: 16px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.admin-login-logo {
+  width: 80px;
+  height: 85px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.admin-login-logo-icon {
+  font-size: 40px;
+  color: #374151;
+}
+
+.admin-login-title {
+  color: #000000;
+  font-weight: 700;
+  font-size: 2.2rem;
+  letter-spacing: 1px;
+}
+
+.admin-login-subtitle {
+  font-size: 0.95rem;
+  margin: 0;
+  color: #000000;
+}
+
+.admin-login-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.admin-login-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.admin-login-input {
+  border-radius: 12px;
+  border: 2px solid #E5E7EB;
+  padding: 14px 18px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.admin-login-input:focus {
+  border-color: #AEE9F7;
+}
+
+.admin-login-input:blur {
+  border-color: #E5E7EB;
+}
+
+.admin-login-button {
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: none;
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-login-button-text {
+  color: #000000;
+}
+
+.admin-login-alert {
+  border-radius: 12px;
+  border: none;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.admin-login-alert-success {
+  background-color: rgba(181, 234, 215, 0.1);
+  color: #374151;
+  border-left: 4px solid #B5EAD7;
+}
+
+.admin-login-alert-error {
+  background-color: rgba(255, 179, 186, 0.1);
+  color: #374151;
+  border-left: 4px solid #FFB3BA;
+}
+
+/* CSS Animations */
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .admin-login-form-wrapper {
+    max-width: 90%;
+    padding: 0 15px;
+  }
+  
+  .admin-login-title {
+    font-size: 1.8rem;
+  }
+  
+  .admin-login-logo {
+    width: 70px;
+    height: 75px;
+  }
+  
+  .admin-login-logo-icon {
+    font-size: 35px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-login-form-wrapper {
+    max-width: 95%;
+    padding: 0 10px;
+  }
+  
+  .admin-login-title {
+    font-size: 1.6rem;
+  }
+  
+  .admin-login-card {
+    padding: 1.5rem !important;
+  }
+  
+  .admin-login-input {
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
+  
+  .admin-login-button {
+    padding: 12px 18px;
+    font-size: 1rem;
+  }
+}
+
+/* Ensure no scrolling on any device */
+html, body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}

@@ -1,0 +1,157 @@
+/* === Base Styles === */
+
+/* Distributor Dashboard Container */
+.distributor-dashboard-container {
+  max-width: 430px;
+  margin: 0 auto;
+  background: #FFFEF9; /* Cream for accent and navigation */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+}
+
+/* Container for mobile layout */
+.dp-container {
+  max-width: 430px;
+  margin: 0 auto;
+  background: #FFFEF9; /* Cream for accent and navigation */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+}
+
+/* User Details Button/Card */
+.dp-user-btn {
+  width: 90%;
+  margin: 16px auto 8px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-radius: 14px;
+  border: none;
+  background: #AEE9F7; /* Pastel Blue for highlights and buttons */
+  color: #374151; /* Dark gray text */
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 4%);
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.2s ease;
+}
+.dp-user-btn:hover,
+.dp-user-btn:focus {
+  background-color: #8DD3C0; /* Light Green */
+  outline: none;
+}
+.dp-user-icon {
+  font-size: 21px;
+  margin-right: 12px;
+}
+
+/* Amount Card styles moved to AmountCard.css */
+
+/* Recent Orders (Use inside dp-amount-card) */
+.recent-orders-list {
+  padding-left: 36px;
+  color: #374151; /* Dark gray text */
+  margin: 0;
+  list-style-type: disc;
+}
+.recent-orders-list li {
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+/* Additional info section */
+.dp-info-section {
+  margin: 24px 5% 0 5%;
+  text-align: center;
+  color: #6B7280; /* Medium gray for secondary text */
+  font-size: 14px;
+  font-weight: normal;
+  background: #FFFFFF; /* White for main background */
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 4%);
+}
+
+/* === Responsive for larger screens (tablet/laptop/desktop) === */
+@media (min-width: 768px) {
+  /* Allow container to expand and center */
+  .distributor-dashboard-container {
+    max-width: 100%; /* Allow full width on larger screens */
+    padding: 0 20px; /* Add some padding for better spacing */
+  }
+  
+  .dp-container {
+    max-width: 100%; /* Allow full width on larger screens */
+    padding: 0 20px; /* Add some padding for better spacing */
+  }
+
+  /* User details button resizing */
+  .dp-user-btn {
+    font-size: 18px;
+    width: 320px;
+    padding: 18px;
+    border-radius: 18px;
+    margin: 24px auto 12px auto;
+  }
+  .dp-user-icon {
+    font-size: 26px;
+    margin-right: 16px;
+  }
+
+  /* Amount Card responsive styles moved to AmountCard.css */
+  /* Recent orders font bigger */
+  .recent-orders-list li {
+    font-size: 16px;
+  }
+  .dp-info-section {
+    max-width: 800px; /* Increased max-width */
+    margin: 32px auto;
+    font-size: 16px;
+    padding: 24px 20px; /* Increased padding */
+  }
+}
+
+/* Additional responsive styles for larger laptop/desktop screens */
+@media (min-width: 1024px) {
+  .distributor-dashboard-container {
+    padding: 0 40px; /* More padding on larger screens */
+  }
+  
+  .dp-container {
+    padding: 0 40px; /* More padding on larger screens */
+  }
+  
+  /* Amount Card responsive styles moved to AmountCard.css */
+  
+  .dp-info-section {
+    max-width: 900px;
+    padding: 28px 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .distributor-dashboard-container {
+    padding: 0 60px; /* Maximum padding on very large screens */
+  }
+  
+  .dp-container {
+    padding: 0 60px; /* Maximum padding on very large screens */
+  }
+  
+  /* Amount Card responsive styles moved to AmountCard.css */
+  
+  .dp-info-section {
+    max-width: 1000px;
+    padding: 32px 28px;
+  }
+}
+

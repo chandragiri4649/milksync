@@ -1,0 +1,417 @@
+/* PaymentHistory.css - Modern styling for payment history component */
+
+/* Card hover effects */
+.card {
+  transition: all 0.3s ease;
+  border-radius: 12px !important;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Summary cards specific styling */
+.summary-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.summary-card .card-header {
+  border-radius: 0;
+  font-weight: 600;
+}
+
+.summary-card .card-body {
+  padding: 1.5rem 1rem;
+}
+
+.summary-card h3 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Search and filter section */
+.search-filter-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.search-filter-card .card-header {
+  border-radius: 0;
+}
+
+.search-filter-card .form-control,
+.search-filter-card .form-select {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.search-filter-card .form-control:focus,
+.search-filter-card .form-select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(174, 233, 247, 0.25); /* Pastel Blue shadow */
+  border-color: #AEE9F7; /* Pastel Blue border */
+}
+
+/* View mode toggle buttons */
+.view-mode-toggle .btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.view-mode-toggle .btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Payment cards specific styling */
+.payment-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.payment-card .card-header {
+  border-radius: 0;
+  padding: 1rem;
+}
+
+.payment-card .card-body {
+  padding: 1.5rem;
+}
+
+.payment-card .card-footer {
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+  border-top: 1px solid #E5E7EB; /* Light gray border */
+  padding: 1rem 1.5rem;
+}
+
+/* Payment method badges */
+.payment-method-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+}
+
+.payment-method-badge.phonepe {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%); /* Pastel Blue to Light Green */
+  color: #374151; /* Dark gray text */
+}
+
+.payment-method-badge.googlepay {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%); /* Light Green gradient */
+  color: #374151; /* Dark gray text */
+}
+
+.payment-method-badge.cash {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%); /* Light Green gradient */
+  color: #374151; /* Dark gray text */
+}
+
+.payment-method-badge.bank {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%); /* Pastel Blue to Light Green */
+  color: #374151; /* Dark gray text */
+}
+
+/* Table styling */
+.payments-table {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.payments-table .table {
+  margin-bottom: 0;
+}
+
+.payments-table .table th {
+  border-top: none;
+  font-weight: 600;
+  padding: 1rem 0.75rem;
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+}
+
+.payments-table .table td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+}
+
+.payments-table .table tbody tr:hover {
+  background-color: rgba(174, 233, 247, 0.05); /* Pastel Blue hover */
+}
+
+/* Action buttons */
+.action-btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  color: #AEE9F7; /* Pastel Blue */
+}
+
+/* Empty state */
+.empty-state {
+  padding: 3rem 1rem;
+}
+
+.empty-state .empty-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%); /* Pastel Blue to Light Green */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.empty-state .empty-icon i {
+  color: #374151; /* Dark gray text */
+  font-size: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .summary-card h3 {
+    font-size: 2rem;
+  }
+  
+  .payment-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .row > div {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Animation for cards appearing */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.payment-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.payment-card:nth-child(1) { animation-delay: 0.1s; }
+.payment-card:nth-child(2) { animation-delay: 0.2s; }
+.payment-card:nth-child(3) { animation-delay: 0.3s; }
+.payment-card:nth-child(4) { animation-delay: 0.4s; }
+.payment-card:nth-child(5) { animation-delay: 0.5s; }
+.payment-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* Export button animation */
+.export-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.export-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.export-btn:hover::before {
+  left: 100%;
+}
+
+/* Filter clear button hover effect */
+.clear-btn:hover {
+  background: linear-gradient(135deg, #6610f2 0%, #007bff 100%) !important;
+}
+
+/* Table row hover effect */
+.payments-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.payments-table tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.08);
+  transform: scale(1.01);
+}
+
+/* Badge animations */
+.badge {
+  transition: all 0.3s ease;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Form control focus states */
+.form-control:focus,
+.form-select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Button group styling */
+.btn-group-toggle .btn {
+  border-radius: 8px;
+  margin: 0 0.25rem;
+}
+
+.btn-group-toggle .btn.active {
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  border-color: #007bff;
+  color: white;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .table-responsive {
+    border-radius: 15px;
+    overflow: hidden;
+  }
+  
+  .payments-table .table th,
+  .payments-table .table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .search-filter-card,
+  .view-mode-toggle,
+  .action-btn {
+    display: none !important;
+  }
+  
+  .payment-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #dee2e6 !important;
+  }
+  
+  .summary-card {
+    break-inside: avoid;
+  }
+}
+
+/* Payment method specific colors */
+.payment-method-phonepe {
+  color: #5f259f;
+}
+
+.payment-method-googlepay {
+  color: #4285f4;
+}
+
+.payment-method-cash {
+  color: #28a745;
+}
+
+.payment-method-bank {
+  color: #17a2b8;
+}
+
+/* Amount highlighting */
+.amount-highlight {
+  font-weight: 700;
+  color: #28a745;
+}
+
+.amount-highlight.large {
+  font-size: 1.5rem;
+}
+
+/* Receipt button styling */
+.receipt-btn {
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.receipt-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+  color: white;
+}
+
+/* Status indicators */
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.status-indicator.success {
+  background-color: #28a745;
+}
+
+.status-indicator.warning {
+  background-color: #ffc107;
+}
+
+.status-indicator.info {
+  background-color: #17a2b8;
+}
+
+/* Hover effects for summary cards */
+.summary-card:hover .card-header {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
+}
+
+/* Gradient text effects */
+.gradient-text {
+  background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Floating action button effect */
+.floating-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.floating-action::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.floating-action:hover::after {
+  width: 300px;
+  height: 300px;
+}

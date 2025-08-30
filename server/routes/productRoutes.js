@@ -5,16 +5,16 @@ const productController = require("../controllers/productController");
 const authenticate = require("../middlewares/authMiddleware");
 const isAdmin = require("../middlewares/adminRoleMiddleware");
 const adminOrStaff = require("../middlewares/adminOrStaffMiddleware");
-const { upload } = require("../middlewares/upload");
+const { upload, handleUploadError } = require("../middlewares/cloudinaryUpload");
 
 // Get products (admin or staff)
 router.get("/", authenticate, adminOrStaff, productController.getProducts);
 
 // Create product (admin only) with image upload
-router.post("/", authenticate, isAdmin, upload.single("image"), productController.createProductWithImage);
+router.post("/", authenticate, isAdmin, upload.single("image"), handleUploadError, productController.createProductWithImage);
 
 // Update product (admin only) with optional image upload
-router.put("/:id", authenticate, isAdmin, upload.single("image"), productController.updateProductWithImage);
+router.put("/:id", authenticate, isAdmin, upload.single("image"), handleUploadError, productController.updateProductWithImage);
 
 // Delete product (admin only)
 router.delete("/:id", authenticate, isAdmin, productController.deleteProduct);

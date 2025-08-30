@@ -1,4 +1,5 @@
 const Product = require("../models/Product");
+const { cloudinary } = require("../config/cloudinary");
 
 // Create product with image file
 exports.createProductWithImage = async (req, res) => {
@@ -31,7 +32,8 @@ exports.createProductWithImage = async (req, res) => {
     if (isNaN(costPerPacketNum)) return res.status(400).json({ error: "Cost per packet must be a valid number" });
     if (isNaN(packetsPerTubNum)) return res.status(400).json({ error: "Packets per tub must be a valid number" });
 
-    const imageUrl = "/uploads/" + req.file.filename;
+    // Get Cloudinary URL from uploaded file
+    const imageUrl = req.file.path;
 
     const product = new Product({
       company,
@@ -77,6 +79,12 @@ exports.updateProductWithImage = async (req, res) => {
     const { company, name, quantity, unit, costPerTub, costPerPacket, packetsPerTub } = req.body;
     let updateData = {};
 
+    // Get the current product to check for existing image
+    const currentProduct = await Product.findById(req.params.id);
+    if (!currentProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
     if (company !== undefined) updateData.company = company;
     if (name !== undefined) updateData.name = name;
     if (quantity !== undefined) {
@@ -110,7 +118,25 @@ exports.updateProductWithImage = async (req, res) => {
     }
 
     if (req.file) {
-      updateData.imageUrl = "/uploads/" + req.file.filename;
+      // Delete old image from Cloudinary if it exists
+      if (currentProduct.imageUrl && currentProduct.imageUrl.includes('cloudinary.com')) {
+        try {
+          // Extract public_id from Cloudinary URL
+          const urlParts = currentProduct.imageUrl.split('/');
+          const publicId = urlParts[urlParts.length - 1].split('.')[0];
+          const folderPath = 'davago_uploads';
+          const fullPublicId = `${folderPath}/${publicId}`;
+          
+          await cloudinary.uploader.destroy(fullPublicId);
+          console.log('✅ Old product image deleted from Cloudinary:', fullPublicId);
+        } catch (deleteError) {
+          console.warn('⚠️ Failed to delete old image from Cloudinary:', deleteError.message);
+          // Continue with update even if old image deletion fails
+        }
+      }
+      
+      // Get Cloudinary URL from uploaded file
+      updateData.imageUrl = req.file.path;
     }
 
     const updated = await Product.findByIdAndUpdate(
@@ -118,10 +144,6 @@ exports.updateProductWithImage = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     );
-
-    if (!updated) {
-      return res.status(404).json({ error: "Product not found" });
-    }
 
     res.json(updated);
   } catch (err) {
@@ -149,11 +171,32 @@ exports.getProductsByCompany = async (req, res) => {
 // Delete product
 exports.deleteProduct = async (req, res) => {
   try {
-    const deleted = await Product.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ error: "Product not found" });
-    res.json({ message: "Product deleted" });
-  } catch {
-    res.status(500).json({ error: "Failed to delete product" });
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ error: "Product not found" });
+
+    // Delete image from Cloudinary if it exists
+    if (product.imageUrl && product.imageUrl.includes('cloudinary.com')) {
+      try {
+        // Extract public_id from Cloudinary URL
+        const urlParts = product.imageUrl.split('/');
+        const publicId = urlParts[urlParts.length - 1].split('.')[0];
+        const folderPath = 'davago_uploads';
+        const fullPublicId = `${folderPath}/${publicId}`;
+        
+        await cloudinary.uploader.destroy(fullPublicId);
+        console.log('✅ Product image deleted from Cloudinary:', fullPublicId);
+      } catch (deleteError) {
+        console.warn('⚠️ Failed to delete image from Cloudinary:', deleteError.message);
+        // Continue with product deletion even if image deletion fails
+      }
+    }
+
+    // Delete the product from database
+    await Product.findByIdAndDelete(req.params.id);
+    res.json({ message: "Product deleted successfully" });
+  } catch (err) {
+    console.error("Product deletion error:", err);
+    res.status(500).json({ error: "Failed to delete product", details: err.message });
   }
 };
 

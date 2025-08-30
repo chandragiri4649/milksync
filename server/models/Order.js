@@ -25,7 +25,25 @@ const orderSchema = new mongoose.Schema({
       quantity: { type: Number, required: true },
       unit: { type: String, required: true } // tub, bucket, etc.
     }
-  ]
+  ],
+  damagedProducts: [
+    {
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+      productName: { type: String },
+      quantity: { type: Number, default: 0 }, // Quantity in PACKETS
+      unit: { type: String, default: 'packets' }, // Always 'packets' for damaged products
+      price: { type: Number, default: 0 }, // Price per packet
+      totalCost: { type: Number, default: 0 } // Total cost for damaged packets
+    }
+  ],
+  totalDamagedCost: { type: Number, default: 0 }, // Total cost of all damaged packets
+  finalBillAmount: { type: Number, default: 0 }, // Final bill amount after damaged products deduction
+  updatedBy: {
+    role: { type: String, enum: ['admin', 'staff'], default: 'admin' },
+    id: { type: mongoose.Schema.Types.ObjectId },
+    name: { type: String }
+  },
+  updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Order", orderSchema);

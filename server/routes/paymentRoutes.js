@@ -4,19 +4,7 @@ const paymentController = require("../controllers/paymentController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const adminOrStaffMiddleware = require("../middlewares/adminOrStaffMiddleware");
 const distributorOnly = require("../middlewares/distributorRoleMiddleware");
-const multer = require("multer");
-const path = require("path");
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function(req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // max 5MB
+const { upload, handleUploadError } = require("../middlewares/cloudinaryUpload");
 
 // Get all payments (admin/staff)
 router.get("/", authMiddleware, adminOrStaffMiddleware, paymentController.getPayments);
@@ -30,6 +18,7 @@ router.post(
   authMiddleware,
   adminOrStaffMiddleware,
   upload.single("receiptImage"), // 'receiptImage' field from the form
+  handleUploadError,
   paymentController.createPayment
 );
 

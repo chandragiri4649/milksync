@@ -1,149 +1,88 @@
 const nodemailer = require('nodemailer');
 
-/**
- * Email Service for Admin Password Reset
- * 
- * Recovery Steps Documentation:
- * 1. Admin requests password reset via POST /admin/request-reset
- * 2. System generates 6-digit OTP and JWT reset token
- * 3. OTP is sent to admin's registered email
- * 4. Admin enters OTP via POST /admin/reset-password
- * 5. System verifies OTP and allows new password setting
- * 6. Password is hashed with bcrypt before saving
- * 
- * Super Admin Recovery:
- * - Super Admin account (superadmin@domain.com) is always available
- * - Cannot be deleted or edited through normal admin management
- * - Can be used to recover access if all other admins are locked out
- */
-
-// Email configuration - in production, use environment variables
+// Email configuration using Gmail service
 const emailConfig = {
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: process.env.SMTP_PORT || 587,
-  secure: false, // true for 465, false for other ports
+  service: 'gmail',
   auth: {
-    user: process.env.SMTP_USER || 'your-email@gmail.com',
-    pass: process.env.SMTP_PASS || 'your-app-password'
+    user: process.env.EMAIL_USER || process.env.SMTP_USER || 'mounilaakutathi89@gmail.com',
+    pass: process.env.EMAIL_PASS || process.env.SMTP_PASS || 'your-app-password'
   }
 };
 
 // Create transporter
 const transporter = nodemailer.createTransport(emailConfig);
 
-/**
- * Send OTP email for password reset
- * @param {string} email - Admin's email address
- * @param {string} otp - 6-digit OTP
- * @param {string} username - Admin's username
- */
-const sendPasswordResetOTP = async (email, otp, username) => {
-  try {
-    const mailOptions = {
-      from: `"SVD MilkSync Admin" <${emailConfig.auth.user}>`,
-      to: email,
-      subject: 'Password Reset - SVD MilkSync Admin',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Password Reset Request</h2>
-          <p>Hello ${username},</p>
-          <p>You have requested to reset your password for the SVD MilkSync Admin account.</p>
-          
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #007bff; margin: 0;">Your OTP Code:</h3>
-            <h1 style="color: #28a745; font-size: 32px; margin: 10px 0; letter-spacing: 5px;">${otp}</h1>
-          </div>
-          
-          <p><strong>Important:</strong></p>
-          <ul>
-            <li>This OTP is valid for 10 minutes only</li>
-            <li>Do not share this code with anyone</li>
-            <li>If you didn't request this reset, please ignore this email</li>
-          </ul>
-          
-          <p>If you need assistance, please contact your system administrator.</p>
-          
-          <hr style="margin: 30px 0;">
-          <p style="color: #666; font-size: 12px;">
-            This is an automated message from SVD MilkSync Admin System.
-          </p>
-        </div>
-      `
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Password reset OTP sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending password reset OTP:', error);
-    throw new Error('Failed to send password reset email');
-  }
-};
-
-/**
- * Send username recovery email
- * @param {string} email - Admin's email address
- * @param {string} username - Admin's username
- */
-const sendUsernameRecovery = async (email, username) => {
-  try {
-    const mailOptions = {
-      from: `"SVD MilkSync Admin" <${emailConfig.auth.user}>`,
-      to: email,
-      subject: 'Username Recovery - SVD MilkSync Admin',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Username Recovery</h2>
-          <p>Hello,</p>
-          <p>You have requested to recover your username for the SVD MilkSync Admin account.</p>
-          
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #007bff; margin: 0;">Your Username:</h3>
-            <h2 style="color: #28a745; margin: 10px 0;">${username}</h2>
-          </div>
-          
-          <p><strong>Security Note:</strong></p>
-          <ul>
-            <li>Keep your username secure and do not share it</li>
-            <li>If you didn't request this recovery, please contact your system administrator</li>
-            <li>Use the password reset feature if you've forgotten your password</li>
-          </ul>
-          
-          <p>If you need assistance, please contact your system administrator.</p>
-          
-          <hr style="margin: 30px 0;">
-          <p style="color: #666; font-size: 12px;">
-            This is an automated message from SVD MilkSync Admin System.
-          </p>
-        </div>
-      `
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Username recovery email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    console.error('Error sending username recovery email:', error);
-    throw new Error('Failed to send username recovery email');
-  }
-};
-
-/**
- * Test email configuration
- */
-const testEmailConfig = async () => {
+// Verify transporter configuration
+const verifyTransporter = async () => {
   try {
     await transporter.verify();
-    console.log('Email configuration is valid');
+    console.log('✅ SMTP connection verified successfully');
     return true;
   } catch (error) {
-    console.error('Email configuration error:', error);
+    console.error('❌ SMTP connection failed:', error);
     return false;
   }
 };
 
+// Send password reset email
+const sendPasswordResetEmail = async (email, resetToken, username) => {
+  try {
+    // Verify SMTP connection first
+    const isVerified = await verifyTransporter();
+    if (!isVerified) {
+      throw new Error('SMTP connection verification failed');
+    }
+
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password/${resetToken}`;
+    
+    const mailOptions = {
+      from: `"MilkSync Admin" <${emailConfig.auth.user}>`,
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hello ${username},</p>
+          <p>You have requested to reset your password for the MilkSync Admin Dashboard.</p>
+          <p>Click the button below to reset your password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          <p>Or copy and paste this link in your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+          <p><strong>This link will expire in 15 minutes.</strong></p>
+          <p>If you did not request this password reset, please ignore this email.</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 12px;">This is an automated message from MilkSync Admin Dashboard.</p>
+        </div>
+      `
+    };
+
+    console.log('📧 Attempting to send email to:', email);
+    console.log('📧 From:', emailConfig.auth.user);
+    console.log('📧 Reset URL:', resetUrl);
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Password reset email sent successfully:', info.messageId);
+    console.log('✅ Email accepted by:', info.accepted);
+    console.log('✅ Email rejected by:', info.rejected);
+    
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('❌ Error sending password reset email:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      response: error.response,
+      responseCode: error.responseCode
+    });
+    throw new Error(`Failed to send password reset email: ${error.message}`);
+  }
+};
+
 module.exports = {
-  sendPasswordResetOTP,
-  sendUsernameRecovery,
-  testEmailConfig
+  sendPasswordResetEmail
 };
