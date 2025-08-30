@@ -1,0 +1,476 @@
+/* ProductsView.css - Modern styling for products view component */
+
+/* Card hover effects */
+.card {
+  transition: all 0.3s ease;
+  border-radius: 12px !important;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Summary cards specific styling */
+.summary-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.summary-card .card-header {
+  border-radius: 0;
+  font-weight: 600;
+}
+
+.summary-card .card-body {
+  padding: 1.5rem 1rem;
+}
+
+.summary-card h3 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #000000;
+}
+
+/* Search and filter section */
+.search-filter-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.search-filter-card .card-header {
+  border-radius: 0;
+}
+
+.search-filter-card .form-control,
+.search-filter-card .form-select {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  color: #000000;
+}
+
+.search-filter-card .form-control:focus,
+.search-filter-card .form-select:focus {
+  box-shadow: 0 0 0 0.2rem rgba(174, 233, 247, 0.25); /* Pastel Blue shadow */
+  border-color: #AEE9F7; /* Pastel Blue border */
+}
+
+/* View mode toggle buttons */
+.view-mode-toggle .btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #000000;
+}
+
+.view-mode-toggle .btn:hover {
+  transform: translateY(-2px);
+}
+
+/* Product cards specific styling */
+.product-card {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.product-card .card-header {
+  border-radius: 0;
+  padding: 1rem;
+}
+
+.product-card .card-body {
+  padding: 1.5rem;
+}
+
+.product-card .card-img-top {
+  transition: all 0.3s ease;
+}
+
+.product-card:hover .card-img-top {
+  transform: scale(1.05);
+}
+
+/* Unit badges */
+.unit-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.5rem 0.75rem;
+  border-radius: 20px;
+  color: #000000;
+}
+
+.unit-badge.ml {
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%); /* Pastel Blue to Light Green */
+  color: #000000; /* Black text */
+}
+
+.unit-badge.kg {
+  background: linear-gradient(135deg, #B5EAD7 0%, #8DD3C0 100%); /* Light Green gradient */
+  color: #000000; /* Black text */
+}
+
+.unit-badge.gm {
+  background: linear-gradient(135deg, #FFE066 0%, #E6D9B8 100%); /* Yellow to Cream gradient */
+  color: #000000; /* Black text */
+}
+
+/* Table styling */
+.products-table {
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.products-table .table {
+  margin-bottom: 0;
+}
+
+.products-table .table th {
+  border-top: none;
+  font-weight: 600;
+  padding: 1rem 0.75rem;
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+  color: #000000;
+}
+
+.products-table .table td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+  color: #000000;
+}
+
+.products-table .table tbody tr:hover {
+  background-color: rgba(174, 233, 247, 0.05); /* Pastel Blue hover */
+}
+
+/* Action buttons */
+.action-btn {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  color: #000000;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading spinner */
+.loading-spinner {
+  color: #000000; /* Black */
+}
+
+/* Empty state */
+.empty-state {
+  padding: 3rem 1rem;
+}
+
+.empty-state .empty-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%); /* Pastel Blue to Light Green */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.empty-state .empty-icon i {
+  color: #000000; /* Black text */
+  font-size: 2rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .summary-card h3 {
+    font-size: 2rem;
+  }
+  
+  .product-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .card-body {
+    padding: 1rem;
+  }
+  
+  .search-filter-card .row > div {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Animation for cards appearing */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.product-card:nth-child(1) { animation-delay: 0.1s; }
+.product-card:nth-child(2) { animation-delay: 0.2s; }
+.product-card:nth-child(3) { animation-delay: 0.3s; }
+.product-card:nth-child(4) { animation-delay: 0.4s; }
+.product-card:nth-child(5) { animation-delay: 0.5s; }
+.product-card:nth-child(6) { animation-delay: 0.6s; }
+
+/* Export button animation */
+.export-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.export-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.export-btn:hover::before {
+  left: 100%;
+}
+
+/* Filter clear button hover effect */
+.clear-btn:hover {
+  background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+}
+
+/* Table row hover effect */
+.products-table tbody tr {
+  transition: all 0.3s ease;
+}
+
+.products-table tbody tr:hover {
+  background-color: rgba(253, 126, 20, 0.08);
+  transform: scale(1.01);
+}
+
+/* Badge animations */
+.badge {
+  transition: all 0.3s ease;
+  color: #000000;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Form control focus states */
+.form-control:focus,
+.form-select:focus {
+  border-color: #fd7e14;
+  box-shadow: 0 0 0 0.2rem rgba(253, 126, 20, 0.25);
+}
+
+/* Button group styling */
+.btn-group-toggle .btn {
+  border-radius: 8px;
+  margin: 0 0.25rem;
+  color: #000000;
+}
+
+.btn-group-toggle .btn.active {
+  background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+  border-color: #fd7e14;
+  color: #000000;
+}
+
+/* Responsive table */
+@media (max-width: 768px) {
+  .table-responsive {
+    border-radius: 15px;
+    overflow: hidden;
+  }
+  
+  .products-table .table th,
+  .products-table .table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Print styles */
+@media print {
+  .search-filter-card,
+  .view-mode-toggle,
+  .action-btn {
+    display: none !important;
+  }
+  
+  .product-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #dee2e6 !important;
+  }
+  
+  .summary-card {
+    break-inside: avoid;
+  }
+}
+
+/* Product unit specific colors */
+.product-unit-ml {
+  color: #000000;
+}
+
+.product-unit-kg {
+  color: #000000;
+}
+
+.product-unit-gm {
+  color: #000000;
+}
+
+/* Box icon styling */
+.box-icon {
+  background: white;
+  color: #000000;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.box-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(253, 126, 20, 0.3);
+}
+
+/* Hover effects for summary cards */
+.summary-card:hover .card-header {
+  transform: scale(1.02);
+  transition: transform 0.3s ease;
+}
+
+/* Gradient text effects */
+.gradient-text {
+  background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Floating action button effect */
+.floating-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.floating-action::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.floating-action:hover::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* Company header styling */
+.company-header {
+  background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+  color: #000000;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 8px rgba(253, 126, 20, 0.3);
+}
+
+.company-header h5 {
+  margin: 0;
+  font-weight: 600;
+  color: #000000;
+}
+
+/* Product image container */
+.product-image-container {
+  position: relative;
+  overflow: hidden;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.product-image-container img {
+  transition: all 0.3s ease;
+}
+
+.product-image-container:hover img {
+  transform: scale(1.1);
+}
+
+/* Price highlighting */
+.price-highlight {
+  font-weight: 700;
+  color: #000000;
+}
+
+.price-highlight.large {
+  font-size: 1.2rem;
+}
+
+/* Quantity badge styling */
+.quantity-badge {
+  background: linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%);
+  color: #000000;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+}
+
+/* Override any remaining colored text */
+.text-warning,
+.text-info,
+.text-success,
+.text-danger,
+.text-primary,
+.text-secondary,
+.text-muted {
+  color: #000000 !important;
+}
+
+/* Ensure all icons are black */
+.fas,
+.far,
+.fab {
+  color: #000000 !important;
+}
+
+/* Ensure all text is black */
+* {
+  color: #000000 !important;
+}
+
+/* Override specific elements that might have different colors */
+.card-header h6,
+.card-body p,
+.form-label,
+.badge,
+.btn {
+  color: #000000 !important;
+}

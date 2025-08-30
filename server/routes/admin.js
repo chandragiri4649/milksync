@@ -12,7 +12,6 @@ const adminRoleMiddleware = require("../middlewares/adminRoleMiddleware");
 const adminOrStaffMiddleware = require("../middlewares/adminOrStaffMiddleware");
 
 // --- Public admin login ---
-
 router.post("/login", adminController.login);
 
 // --- Protect all below as admin-only ---

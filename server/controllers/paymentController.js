@@ -1,10 +1,11 @@
 const paymentService = require("../services/paymentService");
 const Payment = require("../models/Payment");
+const { cloudinary } = require("../config/cloudinary");
 
 exports.createPayment = async (req, res) => {
   try {
     const { distributorId, amount, paymentMethod } = req.body;
-    const receiptImageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const receiptImageUrl = req.file ? req.file.path : null;
 
     if (!distributorId || !amount || !paymentMethod || !receiptImageUrl) {
       return res.status(400).json({ error: "Missing required fields" });

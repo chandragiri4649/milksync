@@ -1,0 +1,381 @@
+/* === TomorrowOrderCard Styles === */
+
+/* Main Card Container */
+.distributor-tomorrow-card {
+  margin: 10px 5% 10px 5%;
+  background: linear-gradient(135deg, #B5EAD7 0%, #C7F0D8 100%);
+  border-radius: 20px;
+  padding: 20px 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: pre-line;
+  border: 2px solid #8DD3C0;
+  position: relative;
+  overflow: hidden;
+}
+
+.distributor-tomorrow-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #AEE9F7, #8DD3C0, #B5EAD7);
+  border-radius: 20px 20px 0 0;
+}
+
+.distributor-tomorrow-card:hover,
+.distributor-tomorrow-card:focus {
+  background: linear-gradient(135deg, #8DD3C0 0%, #A8E6CF 100%);
+  outline: none;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  border-color: #6BBF9E;
+}
+
+/* Card Title */
+.distributor-tomorrow-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0 0 16px 0;
+  text-align: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  border: 2px solid #8DD3C0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.distributor-tomorrow-title::after {
+  content: '📅';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 16px;
+}
+
+/* Loading and Empty States */
+.distributor-tomorrow-summary {
+  margin-top: 12px;
+  color: #6B7280;
+  font-size: 16px;
+  line-height: 1.4;
+  text-align: center;
+  padding: 24px 20px;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 12px;
+  border: 1px dashed #D1D5DB;
+  font-weight: 500;
+}
+
+/* Order Details Container */
+.distributor-tomorrow-order-details {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+  border: 2px solid #E5E7EB;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.distributor-tomorrow-order-details:hover {
+  border-color: #AEE9F7;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.distributor-tomorrow-order-details:last-child {
+  margin-bottom: 0;
+}
+
+/* Order Details Header */
+.distributor-tomorrow-order-details::before {
+  content: '📋';
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  background: #AEE9F7;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Order Date and Status */
+.distributor-tomorrow-order-details > div {
+  margin-bottom: 10px;
+  font-size: 15px;
+  color: #374151;
+  line-height: 1.5;
+  padding: 8px 12px;
+  background: rgba(174, 233, 247, 0.1);
+  border-radius: 8px;
+  border-left: 4px solid #AEE9F7;
+  font-weight: 500;
+}
+
+.distributor-tomorrow-order-details > div:last-of-type {
+  margin-bottom: 16px;
+}
+
+.distributor-tomorrow-order-details strong {
+  color: #1F2937;
+  font-weight: 700;
+  margin-right: 8px;
+  display: inline-block;
+  min-width: 80px;
+}
+
+/* Order Items List */
+.distributor-tomorrow-order-details ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.distributor-tomorrow-order-details li {
+  margin-bottom: 8px;
+  font-size: 15px;
+  color: #4B5563;
+  line-height: 1.4;
+  padding: 10px 16px;
+  background: rgba(181, 234, 215, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(141, 211, 192, 0.3);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.distributor-tomorrow-order-details li:hover {
+  background: rgba(181, 234, 215, 0.4);
+  border-color: rgba(141, 211, 192, 0.6);
+  transform: translateX(4px);
+}
+
+.distributor-tomorrow-order-details li::before {
+  content: '🥛';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #FFFFFF;
+  padding: 2px;
+  border-radius: 50%;
+  font-size: 12px;
+  border: 1px solid #8DD3C0;
+}
+
+.distributor-tomorrow-order-details li:last-child {
+  margin-bottom: 0;
+}
+
+/* === Responsive Styles === */
+@media (min-width: 768px) {
+  .distributor-tomorrow-card {
+    margin: 20px auto;
+    max-width: 800px;
+    padding: 28px 24px;
+    border-radius: 24px;
+  }
+
+  .distributor-tomorrow-card::before {
+    height: 6px;
+  }
+
+  .distributor-tomorrow-title {
+    font-size: 22px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    border-radius: 16px;
+  }
+
+  .distributor-tomorrow-title::after {
+    font-size: 18px;
+    right: 16px;
+  }
+
+  .distributor-tomorrow-summary {
+    font-size: 18px;
+    padding: 28px 24px;
+    border-radius: 16px;
+  }
+
+  .distributor-tomorrow-order-details {
+    padding: 24px;
+    margin: 20px 0;
+    border-radius: 20px;
+  }
+
+  .distributor-tomorrow-order-details::before {
+    font-size: 16px;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+
+  .distributor-tomorrow-order-details > div {
+    font-size: 17px;
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    border-radius: 10px;
+  }
+
+  .distributor-tomorrow-order-details strong {
+    min-width: 90px;
+  }
+
+  .distributor-tomorrow-order-details li {
+    font-size: 17px;
+    margin-bottom: 10px;
+    padding: 12px 20px;
+    border-radius: 10px;
+  }
+
+  .distributor-tomorrow-order-details li::before {
+    font-size: 14px;
+    padding: 3px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .distributor-tomorrow-card {
+    max-width: 900px;
+    padding: 32px 28px;
+    border-radius: 28px;
+  }
+
+  .distributor-tomorrow-title {
+    font-size: 24px;
+    margin-bottom: 24px;
+    padding: 20px 24px;
+  }
+
+  .distributor-tomorrow-summary {
+    font-size: 20px;
+    padding: 32px 28px;
+  }
+
+  .distributor-tomorrow-order-details {
+    padding: 28px;
+    margin: 24px 0;
+  }
+
+  .distributor-tomorrow-order-details > div {
+    font-size: 18px;
+    margin-bottom: 14px;
+    padding: 12px 20px;
+  }
+
+  .distributor-tomorrow-order-details strong {
+    min-width: 100px;
+  }
+
+  .distributor-tomorrow-order-details li {
+    font-size: 18px;
+    margin-bottom: 12px;
+    padding: 14px 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .distributor-tomorrow-card {
+    max-width: 1000px;
+    padding: 36px 32px;
+    border-radius: 32px;
+  }
+
+  .distributor-tomorrow-title {
+    font-size: 26px;
+    margin-bottom: 28px;
+    padding: 24px 28px;
+  }
+
+  .distributor-tomorrow-summary {
+    font-size: 22px;
+    padding: 36px 32px;
+  }
+
+  .distributor-tomorrow-order-details {
+    padding: 32px;
+    margin: 28px 0;
+  }
+
+  .distributor-tomorrow-order-details > div {
+    font-size: 19px;
+    margin-bottom: 16px;
+    padding: 14px 24px;
+  }
+
+  .distributor-tomorrow-order-details strong {
+    min-width: 110px;
+  }
+
+  .distributor-tomorrow-order-details li {
+    font-size: 19px;
+    margin-bottom: 14px;
+    padding: 16px 28px;
+  }
+}
+
+/* === Animation and Interactive States === */
+.distributor-tomorrow-card:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Focus state for accessibility */
+.distributor-tomorrow-card:focus-visible {
+  outline: 4px solid #AEE9F7;
+  outline-offset: 4px;
+}
+
+/* Loading animation */
+.distributor-tomorrow-summary.loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+}
+
+/* Enhanced hover effects for order details */
+.distributor-tomorrow-order-details:hover::before {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+/* Smooth transitions for all interactive elements */
+.distributor-tomorrow-card * {
+  transition: all 0.2s ease;
+}
+
+/* Status-specific styling - using proper CSS classes */
+.distributor-tomorrow-order-details .status-pending {
+  border-left-color: #F59E0B;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.distributor-tomorrow-order-details .status-confirmed {
+  border-left-color: #10B981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.distributor-tomorrow-order-details .status-delivered {
+  border-left-color: #3B82F6;
+  background: rgba(59, 130, 246, 0.1);
+}

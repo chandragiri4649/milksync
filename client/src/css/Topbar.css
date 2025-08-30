@@ -1,0 +1,80 @@
+/* Use Bootstrap navbar, but enhance for consistency and custom look */
+
+.navbar.topbar {
+  background: #FFFFFF; /* White for main background */
+  border-bottom: 1px solid #E5E7EB; /* Light gray border */
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(174, 233, 247, 0.04); /* Pastel Blue shadow */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
+  /* Use flex row for navbar layout (Bootstrap already does) */
+}
+
+/* Admin title styling */
+.navbar-brand.admin-title {
+  font-size: 23px;
+  font-weight: 600;
+  color: #374151; /* Dark gray text */
+}
+
+/* Button group for top actions (Bootstrap's btn-group) */
+.btn-group[aria-label="Topbar actions"] .btn {
+  padding: 7px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: 5px !important;
+  /* Override Bootstrap outline colors for your own brand */
+  background: #AEE9F7; /* Pastel Blue for highlights and buttons */
+  color: #374151; /* Dark gray text */
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.btn-group[aria-label="Topbar actions"] .btn.active,
+.btn-group[aria-label="Topbar actions"] .btn:disabled {
+  background: #8DD3C0; /* Light Green */
+  color: #374151; /* Dark gray text */
+  cursor: default;
+}
+
+.btn-group[aria-label="Topbar actions"] .btn:hover:not(.active):not(:disabled) {
+  background: #B5EAD7; /* Light Green */
+  color: #374151; /* Dark gray text */
+}
+
+/* Logout button specifically */
+.btn.logout-btn, .btn.btn-danger.logout-btn {
+  background: #FFB3BA; /* Soft Red for danger */
+  color: #374151; /* Dark gray text */
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-left: 10px;
+  padding: 8px 16px;
+  transition: background-color 0.3s;
+}
+
+.btn.logout-btn:hover, .btn.btn-danger.logout-btn:hover {
+  background: #E6D9B8; /* Darker cream */
+  color: #374151; /* Dark gray text */
+}
+
+/* Responsive tweaks for mobile screens */
+@media (max-width: 575.98px) {
+  .navbar.topbar {
+    flex-direction: column !important;
+    text-align: center;
+    padding: 10px 8px;
+  }
+  .navbar-brand.admin-title {
+    margin-bottom: 8px;
+  }
+  .btn-group[aria-label="Topbar actions"] {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px;
+  }
+}

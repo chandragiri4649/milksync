@@ -46,6 +46,8 @@ exports.login = async (req, res) => {
   }
 };
 
+
+
 // Contact Details Management Methods
 
 // Get all contact details

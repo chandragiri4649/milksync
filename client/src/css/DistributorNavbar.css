@@ -1,0 +1,211 @@
+/* === DistributorNavbar Styles === */
+
+/* Combined Distributor Navbar */
+.distributor-navbar {
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 6%);
+  z-index: 999;
+}
+
+/* Header Section */
+.distributor-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 16px 0.5rem 16px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.distributor-logo {
+  position: absolute;
+  left: 16px;
+}
+
+.distributor-logo img {
+  height: 36px;
+  width: auto;
+}
+
+.distributor-logo-text {
+  font-weight: bold;
+  font-size: 20px;
+  color: #AEE9F7;
+}
+
+.distributor-title-section {
+  text-align: center;
+}
+
+.distributor-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.distributor-subtitle {
+  font-size: 13px;
+  color: #6B7280;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.distributor-user-section {
+  position: absolute;
+  right: 16px;
+}
+
+/* Navigation Tabs Section */
+.distributor-nav-tabs {
+  display: flex;
+  justify-content: space-between;
+  padding: 0;
+}
+
+.distributor-nav-tab {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 10px 6px; /* Reduced padding to accommodate 5 tabs */
+  font-size: 13px; /* Slightly smaller font for 5 tabs */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6B7280;
+  font-weight: 500;
+  transition: color 0.2s, font-weight 0.2s, background-color 0.2s;
+  user-select: none;
+  min-height: 60px;
+}
+
+.distributor-nav-tab.active {
+  color: #AEE9F7;
+  font-weight: 600;
+  background-color: #F0FDFF;
+}
+
+.distributor-nav-tab:hover {
+  background-color: #F8FEFF;
+}
+
+.distributor-nav-tab:focus {
+  outline: 2px solid #AEE9F7;
+  outline-offset: -2px;
+}
+
+.distributor-nav-icon {
+  font-size: 18px; /* Slightly smaller icon for 5 tabs */
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.distributor-nav-label {
+  font-size: 10px; /* Smaller label for 5 tabs */
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* === Responsive for larger screens (tablet/laptop/desktop) === */
+@media (min-width: 768px) {
+  /* Combined Navbar responsive */
+  .distributor-navbar {
+    max-width: 100%; /* Allow full width on larger screens */
+    margin: 0; /* Remove auto margin to allow full width */
+    border-radius: 0; /* Remove border radius for full-width navbar */
+  }
+
+  /* Header responsive */
+  .distributor-header {
+    padding: 1.5rem 24px 0.8rem 24px;
+  }
+
+  .distributor-logo img {
+    height: 42px;
+  }
+
+  .distributor-logo-text {
+    font-size: 24px;
+  }
+
+  .distributor-title {
+    font-size: 36px;
+  }
+
+  .distributor-subtitle {
+    font-size: 16px;
+  }
+
+  /* Navigation tabs responsive */
+  .distributor-nav-tabs {
+    border-radius: 0; /* Remove border radius for full-width tabs */
+  }
+
+  .distributor-nav-tab {
+    font-size: 15px; /* Adjusted for 5 tabs */
+    padding: 14px 10px; /* Adjusted padding for 5 tabs */
+    min-height: 70px;
+  }
+
+  .distributor-nav-icon {
+    font-size: 22px; /* Adjusted for 5 tabs */
+    margin-bottom: 6px;
+  }
+
+  .distributor-nav-label {
+    font-size: 12px; /* Adjusted for 5 tabs */
+  }
+}
+
+/* Additional responsive styles for larger laptop/desktop screens */
+@media (min-width: 1024px) {
+  .distributor-navbar {
+    padding: 0 40px; /* Add padding on larger screens */
+  }
+  
+  .distributor-header {
+    padding: 2rem 40px 1rem 40px;
+  }
+  
+  .distributor-nav-tab {
+    font-size: 16px;
+    padding: 16px 12px;
+    min-height: 75px;
+  }
+  
+  .distributor-nav-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  .distributor-nav-label {
+    font-size: 13px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .distributor-navbar {
+    padding: 0 60px; /* Maximum padding on very large screens */
+  }
+  
+  .distributor-header {
+    padding: 2.5rem 60px 1.5rem 60px;
+  }
+  
+  .distributor-nav-tab {
+    font-size: 17px;
+    padding: 18px 14px;
+    min-height: 80px;
+  }
+  
+  .distributor-nav-icon {
+    font-size: 26px;
+    margin-bottom: 8px;
+  }
+  
+  .distributor-nav-label {
+    font-size: 14px;
+  }
+}

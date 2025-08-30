@@ -15,6 +15,8 @@ const orderRoutes = require("./routes/orderRoutes");
 const billsRoutes = require("./routes/billsRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const authRoutes = require("./routes/authRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 
 
@@ -51,6 +53,8 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/bills", billsRoutes);
 app.use("/api/wallets", walletRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api", uploadRoutes);
 
 
 

@@ -1,0 +1,34 @@
+/* Admin ordering theme overrides */
+
+.admin-order-page {
+  background-color: #FFFEF9; /* Cream for accent and navigation */
+  min-height: 100vh;
+  padding: 10px;
+}
+
+/* Title styling for admin */
+.admin-order-page h2 {
+  color: #AEE9F7; /* Pastel Blue for highlights and buttons */
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* Distributor cards theme */
+.admin-order-page .card {
+  border-radius: 14px;
+  transition: box-shadow 0.2s ease;
+}
+
+.admin-order-page .card:hover {
+  box-shadow: 0 4px 12px rgba(174, 233, 247, 0.2); /* Pastel Blue shadow */
+}
+
+/* Product cards button for admin */
+.admin-order-page .product-card button {
+  background: linear-gradient(135deg, #AEE9F7, #8DD3C0); /* Pastel Blue to Light Green */
+}
+
+.admin-order-page .product-card button:active {
+  background: linear-gradient(135deg, #8DD3C0, #B5EAD7); /* Light Green gradient */
+  transform: scale(0.97);
+}

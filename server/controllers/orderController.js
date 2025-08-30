@@ -254,7 +254,7 @@ exports.getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user._id })
       .populate("distributorId", "name company")
-      .populate("items.productId", "name company quantity unit imageUrl")
+      .populate("items.productId", "name company quantity unit imageUrl costPerTub costPerPacket packetsPerTub")
       .sort({ createdAt: -1 });
 
     // Manually populate user information since we have dynamic references
@@ -308,7 +308,7 @@ exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find({})
       .populate("distributorId", "name company")
-      .populate("items.productId", "name company quantity unit imageUrl")
+      .populate("items.productId", "name company quantity unit imageUrl costPerTub costPerPacket packetsPerTub")
       .sort({ createdAt: -1 });
 
     // Manually populate user information since we have dynamic references
@@ -419,23 +419,52 @@ exports.updateOrder = async (req, res) => {
 // Mark order as delivered and credit wallet
 exports.markOrderDelivered = async (req, res) => {
   const { id } = req.params;
-  console.log('🚚 markOrderDelivered called for order:', id);
+  const { damagedProducts, updatedBy } = req.body || {};
+  const requestId = Math.random().toString(36).substring(7);
+  console.log(`🚚 [${requestId}] markOrderDelivered called for order:`, id);
+  console.log(`📦 [${requestId}] Damaged products data:`, damagedProducts);
+  console.log(`👤 [${requestId}] Updated by:`, updatedBy);
   
   if (!mongoose.Types.ObjectId.isValid(id)) {
-    console.log('❌ Invalid order ID:', id);
+    console.log(`❌ [${requestId}] Invalid order ID:`, id);
     return res.status(400).json({ error: "Invalid order id" });
   }
   
   try {
     // Load order with product details for bill generation
-    console.log('📋 Loading order details...');
-    const order = await Order.findById(id)
+    console.log(`📋 [${requestId}] Loading order details...`);
+    let order = await Order.findById(id)
       .populate("distributorId", "_id name distributorName")
       .populate("items.productId", "name costPerTub costPerPacket packetsPerTub");
 
     if (!order) {
       console.log('❌ Order not found:', id);
       return res.status(404).json({ error: "Order not found" });
+    }
+
+    // Double-check order status to prevent race conditions
+    if (order.locked || order.status === "delivered") {
+      console.log('❌ Order already delivered/locked:', {
+        orderId: order._id,
+        status: order.status,
+        locked: order.locked
+      });
+      return res.status(400).json({ error: "Order already delivered/locked" });
+    }
+
+    // Refresh order data to ensure we have the latest status
+    order = await Order.findById(id)
+      .populate("distributorId", "_id name distributorName")
+      .populate("items.productId", "name costPerTub costPerPacket packetsPerTub");
+    
+    // Check again after refresh
+    if (order.locked || order.status === "delivered") {
+      console.log('❌ Order became locked/delivered after refresh:', {
+        orderId: order._id,
+        status: order.status,
+        locked: order.locked
+      });
+      return res.status(400).json({ error: "Order became locked/delivered during processing" });
     }
 
     console.log('✅ Order found:', {
@@ -445,22 +474,85 @@ exports.markOrderDelivered = async (req, res) => {
       distributorId: order.distributorId._id
     });
 
-    if (order.locked || order.status === "delivered") {
-      console.log('❌ Order already delivered/locked');
-      return res.status(400).json({ error: "Order already delivered/locked" });
-    }
-
     // Find existing bill or generate one if it doesn't exist
     console.log('🔍 Checking for existing bill...');
     let bill = await Bill.findOne({ orderId: order._id });
     
+    // Variables for bill calculations
+    let billItems = [];
+    let originalOrderTotal = 0;
+    let totalDamagedCost = 0;
+    let damagedBillItems = [];
+
+    // First, calculate the original order total from order items
+    console.log(`📊 [${requestId}] Calculating original order total...`);
+    for (const item of order.items) {
+      const product = item.productId;
+      if (!product) {
+        console.log('⚠️ Product not found for item, skipping:', item);
+        continue;
+      }
+
+      // Use costPerTub directly, with fallback calculation
+      let costPerTub = product.costPerTub;
+      if (!costPerTub && product.costPerPacket && product.packetsPerTub) {
+        costPerTub = product.costPerPacket * product.packetsPerTub;
+        console.log(` Calculated costPerTub for ${product.name}: ${costPerTub}`);
+      }
+      
+      if (!costPerTub) {
+        console.log('⚠️ No cost information for product:', product.name);
+        costPerTub = 0;
+      }
+
+      const totalCost = costPerTub * item.quantity;
+      originalOrderTotal += totalCost;
+
+      billItems.push({
+        productId: product._id,
+        productName: product.name,
+        quantity: item.quantity,
+        unit: item.unit || 'tubs',
+        price: costPerTub,
+        total: totalCost
+      });
+    }
+
+    console.log(`💰 [${requestId}] Original order total calculated: ₹${originalOrderTotal}`);
+
+    // Process damaged products if provided
+    if (damagedProducts && Array.isArray(damagedProducts) && damagedProducts.length > 0) {
+      console.log(`📦 [${requestId}] Processing damaged products...`);
+      
+      for (const damagedItem of damagedProducts) {
+        if (damagedItem.damagedQuantity > 0) {
+          const product = await Product.findById(damagedItem.productId);
+          if (product) {
+            // Damaged quantity is in PACKETS, not tubs
+            // Calculate damaged cost: damagedPackets * costPerPacket
+            const damagedCost = product.costPerPacket * damagedItem.damagedQuantity;
+            totalDamagedCost += damagedCost;
+
+            damagedBillItems.push({
+              productId: product._id,
+              productName: product.name,
+              quantity: damagedItem.damagedQuantity,
+              unit: 'packets', // Always packets for damaged products
+              price: product.costPerPacket, // Price per packet
+              total: damagedCost
+            });
+
+            console.log(`📦 [${requestId}] Damaged: ${product.name} - Packets: ${damagedItem.damagedQuantity}, Cost per packet: ₹${product.costPerPacket}, Total damaged cost: ₹${damagedCost}`);
+          }
+        }
+      }
+    }
+
     if (!bill) {
       console.log('📄 No bill found, generating automatically...');
       try {
         // Generate bill automatically
-        // Generate bill automatically
-        const billItems = [];
-        let totalBillAmount = 0;
+        // Note: billItems and originalOrderTotal are already calculated above
 
         for (const item of order.items) {
           const product = item.productId;
@@ -494,7 +586,20 @@ exports.markOrderDelivered = async (req, res) => {
           });
         }
 
-        console.log('💰 Calculated bill amount:', totalBillAmount);
+        // Calculate final bill amount: Original Order Total - Damaged Cost
+        let finalBillAmount = originalOrderTotal - totalDamagedCost;
+        
+        // Prevent negative bill amounts
+        if (finalBillAmount < 0) {
+          console.log(`⚠️ [${requestId}] Final bill would be negative (₹${finalBillAmount}), setting to 0`);
+          finalBillAmount = 0;
+        }
+
+        console.log(`💰 [${requestId}] Bill calculation summary:`, {
+          originalOrderTotal: `₹${originalOrderTotal}`,
+          totalDamagedCost: `₹${totalDamagedCost}`,
+          finalBillAmount: `₹${finalBillAmount}`
+        });
 
         // Create the bill
         bill = new Bill({
@@ -505,11 +610,19 @@ exports.markOrderDelivered = async (req, res) => {
           customerName: order.customerName || 'Customer',
           customerPhone: order.customerPhone || '',
           items: billItems,
-          subtotal: totalBillAmount,
-          totalAmount: totalBillAmount,
+          damagedProducts: damagedBillItems,
+          subtotal: originalOrderTotal,
+          totalDamagedCost: totalDamagedCost,
+          totalAmount: finalBillAmount,
           paymentMethod: 'pending',
           status: 'pending',
-          locked: false
+          locked: false,
+          updatedBy: updatedBy || {
+            role: 'admin',
+            id: req.user._id,
+            name: req.user.username || req.user.name || 'Admin'
+          },
+          updatedAt: new Date()
         });
 
         await bill.save();
@@ -527,6 +640,31 @@ exports.markOrderDelivered = async (req, res) => {
         console.log('❌ Bill already locked');
         return res.status(400).json({ error: "Bill already locked for this order" });
       }
+      
+      // Update existing bill with damaged products information
+      console.log(`📝 [${requestId}] Updating existing bill with damaged products...`);
+      
+      // Calculate final bill amount for existing bill
+      let finalBillAmount = originalOrderTotal - totalDamagedCost;
+      if (finalBillAmount < 0) {
+        console.log(`⚠️ [${requestId}] Final bill would be negative (₹${finalBillAmount}), setting to 0`);
+        finalBillAmount = 0;
+      }
+      
+             bill.items = billItems;
+       bill.damagedProducts = damagedBillItems;
+       bill.subtotal = originalOrderTotal;
+       bill.totalDamagedCost = totalDamagedCost;
+       bill.totalAmount = finalBillAmount;
+       bill.updatedBy = updatedBy || {
+         role: 'admin',
+         id: req.user._id,
+         name: req.user.username || req.user.name || 'Admin'
+       };
+       bill.updatedAt = new Date();
+       
+       await bill.save();
+      console.log('✅ Existing bill updated with damaged products');
     }
 
     // Lock the bill
@@ -551,21 +689,56 @@ exports.markOrderDelivered = async (req, res) => {
 
     console.log('✅ Wallet credited:', bill.totalAmount, 'New balance:', updatedDistributor.walletBalance);
 
+    // Final check to ensure order hasn't been modified by another process
+    console.log(`🔍 [${requestId}] Final status check before locking order...`);
+    const finalOrderCheck = await Order.findById(id);
+    if (finalOrderCheck.locked || finalOrderCheck.status === "delivered") {
+      console.log(`❌ [${requestId}] Order was modified by another process during delivery`);
+      return res.status(400).json({ error: "Order was modified by another process during delivery" });
+    }
+
     // Lock order and set delivered status
-    console.log('🔒 Locking order and setting delivered status...');
+    console.log(`🔒 [${requestId}] Locking order and setting delivered status...`);
     order.status = "delivered";
     order.locked = true;
-    await order.save();
+    
+         // Save damaged products information and final bill amount
+     if (damagedProducts && Array.isArray(damagedProducts) && damagedProducts.length > 0) {
+       order.damagedProducts = damagedBillItems;
+       order.totalDamagedCost = totalDamagedCost;
+       console.log(`📦 [${requestId}] Saved damaged products information to order`);
+     }
+     
+     // Always save the final bill amount to the order
+     order.finalBillAmount = bill.totalAmount;
+     console.log(`💰 [${requestId}] Saved final bill amount to order: ₹${bill.totalAmount}`);
+     
+     // Save who updated the order and when
+     order.updatedBy = updatedBy || {
+       role: 'admin',
+       id: req.user._id,
+       name: req.user.username || req.user.name || 'Admin'
+     };
+     order.updatedAt = new Date();
+     console.log(`👤 [${requestId}] Saved update information to order:`, order.updatedBy);
+     
+     await order.save();
 
     console.log('✅ Order marked as delivered successfully');
-    res.json({
-      message: "Order marked as delivered. Bill generated (if needed), wallet credited, and records locked.",
-      orderId: order._id,
-      billId: bill._id,
-      creditedAmount: bill.totalAmount,
-      walletBalance: updatedDistributor.walletBalance,
-      billGenerated: !bill.createdAt || new Date() - bill.createdAt < 1000 // Indicates if bill was just created
-    });
+         res.json({
+       message: "Order marked as delivered. Bill generated (if needed), wallet credited, and records locked.",
+       orderId: order._id,
+       billId: bill._id,
+       creditedAmount: bill.totalAmount,
+       walletBalance: updatedDistributor.walletBalance,
+       billGenerated: !bill.createdAt || new Date() - bill.createdAt < 1000, // Indicates if bill was just created
+       damagedProducts: order.damagedProducts || [],
+       totalDamagedCost: order.totalDamagedCost || 0,
+       originalBillAmount: originalOrderTotal,
+       finalBillAmount: bill.totalAmount,
+       updatedBy: order.updatedBy,
+       updatedAt: order.updatedAt
+     });
   } catch (err) {
     console.error('❌ Error in markOrderDelivered:', err);
     console.error('❌ Error stack:', err.stack);
@@ -610,6 +783,7 @@ exports.getDistributorOrders = async (req, res) => {
       distributorId: distributorId
     })
     .populate("items.productId", "name quantity unit company costPerPacket packetsPerTub")
+    .populate("userId", "name username")
     .sort({ orderDate: -1, createdAt: -1 }); // Most recent first
 
     // Transform the data to match the frontend expectations
@@ -630,7 +804,11 @@ exports.getDistributorOrders = async (req, res) => {
       })),
       deliveryDate: order.deliveryDate,
       locked: order.locked,
-      createdAt: order.createdAt
+      createdAt: order.createdAt,
+      // Include damaged products information
+      damagedProducts: order.damagedProducts || [],
+      updatedBy: order.updatedBy || null,
+      updatedAt: order.updatedAt || null
     }));
 
     res.json(transformedOrders);
