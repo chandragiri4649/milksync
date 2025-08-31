@@ -1,10 +1,7 @@
 const app = require("./app");
 const mongoose = require("mongoose");
 
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/milksync", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/milksync")
 .then(() => {
   console.log("MongoDB connected");
   const PORT = process.env.PORT || 5000;
