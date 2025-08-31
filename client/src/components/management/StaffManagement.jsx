@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const StaffManagement = () => {
   // State to store the list of staff fetched from the server
@@ -33,21 +33,13 @@ const StaffManagement = () => {
   // Fetch staff list on component mount
   const fetchStaff = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/admin/staff`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Error: ${res.status} ${res.statusText}`);
-      }
-
-      const data = await res.json();
+      const data = await apiService.get('/admin/staff');
       setStaffList(data);
     } catch (err) {
       setMessage("Failed to fetch staff.");
       console.error("Fetch staff error:", err);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchStaff();

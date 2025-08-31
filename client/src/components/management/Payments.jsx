@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const PaymentManagement = () => {
   const { token } = useAuth();
@@ -26,26 +26,18 @@ const PaymentManagement = () => {
   // Fetch all distributors
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch distributors");
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       setError(err.message || "Error fetching distributors");
     }
-  }, [token]);
+  }, []);
 
   // Fetch payment history
   const fetchPaymentHistory = useCallback(async () => {
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${config.API_BASE}/payments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch payment history");
-      const data = await res.json();
+      const data = await apiService.get('/payments');
       setPaymentHistory(data);
     } catch (err) {
       console.error("Error fetching payment history:", err);
@@ -53,7 +45,7 @@ const PaymentManagement = () => {
     } finally {
       setLoadingHistory(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchDistributors();

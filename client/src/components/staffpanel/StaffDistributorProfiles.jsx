@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import StaffNavbar from "./StaffNavbar";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const StaffDistributorProfiles = () => {
   const { token } = useAuth();
@@ -16,19 +16,7 @@ const StaffDistributorProfiles = () => {
         setLoading(true);
         setError("");
 
-        const response = await fetch(`${config.API_BASE}/distributor`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await apiService.get('/distributor');
         setDistributors(data || []);
       } catch (err) {
         console.error("Error fetching distributors:", err);
@@ -38,10 +26,8 @@ const StaffDistributorProfiles = () => {
       }
     };
 
-    if (token) {
-      fetchDistributors();
-    }
-  }, [token]);
+    fetchDistributors();
+  }, []);
 
   return (
     <div className="min-vh-100" style={{ backgroundColor: '#f8f9fa', fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif' }}>

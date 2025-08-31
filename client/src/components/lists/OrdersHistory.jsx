@@ -1,14 +1,13 @@
 // src/components/orders/OrdersHistory.jsx
 import React, { useEffect, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 import { useAuth } from "../../hooks/useAuth";
 import OrderEditModal from "./OrderEditModal";
 import DamageProductsModal from "./DamageProductsModal";
 
 
 const OrdersHistory = ({ showAllOrders = false }) => {
-  const { token } = useAuth();
   const location = useLocation();
   
   // Check if this is being accessed from staff routes
@@ -34,34 +33,22 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   // Fetch distributors for search functionality
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch distributors");
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       console.error("Error fetching distributors:", err);
     }
-  }, [token]);
+  }, []);
 
   // Fetch orders - all orders for admin, user's orders for staff
   useEffect(() => {
     const endpoint = showAllOrders ? "/orders/all" : "/orders/my-orders";
     setLoading(true);
     
-    fetch(`${config.API_BASE}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const errorText = await res.text();
-          throw new Error(`Failed to fetch orders (${res.status}): ${errorText}`);
-        }
-        return res.json();
-      })
+    apiService.get(endpoint)
       .then(data => {
         // Ensure data is always an array
+        console.log(data)
         if (Array.isArray(data)) {
           setOrders(data);
           setSelectedMonth(currentMonth); // Set default month
@@ -84,7 +71,7 @@ const OrdersHistory = ({ showAllOrders = false }) => {
         setOrders([]);
         setLoading(false);
       });
-  }, [token, showAllOrders, currentMonth]);
+  }, [showAllOrders, currentMonth]);
 
   // Load distributors on mount
   useEffect(() => {
@@ -100,7 +87,11 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   // Filter orders based on search criteria
   const getFilteredOrders = () => {
     let filtered = safeOrders;
-    
+    console.log("safeOrders", safeOrders)
+    console.log("selectedDistributor", selectedDistributor)
+    console.log("selectedMonth", selectedMonth)
+    console.log("selectedYear", selectedYear)
+    console.log("searchTerm", searchTerm)
     // Filter by distributor
     if (selectedDistributor) {
       filtered = filtered.filter(order => 
@@ -144,6 +135,7 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   };
 
   const filteredOrders = getFilteredOrders();
+  console.log("filteredOrders", filteredOrders)
 
   // Filter only delivered orders by selected distributor, month, and year
   const getFilteredDeliveredOrders = () => {
@@ -253,19 +245,15 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   const summaryStats = getSummaryStats();
 
   // Delete an order
-  const deleteOrder = (id) => {
+  const deleteOrder = async (id) => {
     if (!window.confirm("Delete this order?")) return;
-    fetch(`${config.API_BASE}/orders/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) return setMessage(data.error);
-        setOrders(prev => prev.filter(o => o._id !== id));
-        setMessage("Order deleted successfully");
-      })
-      .catch(() => setMessage("Failed to delete order"));
+    try {
+      await apiService.delete(`/orders/${id}`);
+      setOrders(prev => prev.filter(o => o._id !== id));
+      setMessage("Order deleted successfully");
+    } catch (error) {
+      setMessage(error.message || "Failed to delete order");
+    }
   };
 
   // Mark order as delivered
@@ -385,10 +373,7 @@ Status: ${order.status}
 
     try {
       const promises = selectedOrders.map(orderId => 
-        fetch(`${config.API_BASE}/orders/${orderId}/deliver`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        apiService.post(`/orders/${orderId}/deliver`)
       );
 
       await Promise.all(promises);
@@ -404,7 +389,7 @@ Status: ${order.status}
     }
   };
 
-  const bulkDeleteOrders = () => {
+  const bulkDeleteOrders = async () => {
     if (selectedOrders.length === 0) {
       setMessage("Please select orders to delete");
       return;
@@ -414,17 +399,13 @@ Status: ${order.status}
 
     try {
       const promises = selectedOrders.map(orderId => 
-        fetch(`${config.API_BASE}/orders/${orderId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        apiService.delete(`/orders/${orderId}`)
       );
 
-      Promise.all(promises).then(() => {
-        setOrders(prev => prev.filter(order => !selectedOrders.includes(order._id)));
-        setSelectedOrders([]);
-        setMessage(`${selectedOrders.length} orders deleted successfully!`);
-      });
+      await Promise.all(promises);
+      setOrders(prev => prev.filter(order => !selectedOrders.includes(order._id)));
+      setSelectedOrders([]);
+      setMessage(`${selectedOrders.length} orders deleted successfully!`);
     } catch (err) {
       setMessage("Failed to delete some orders");
     }
@@ -1108,7 +1089,7 @@ Status: ${order.status}
       {editingOrder && (
         <OrderEditModal
           order={editingOrder}
-          token={token}
+         
           onClose={() => setEditingOrder(null)}
           onSave={(updatedOrder) => {
             setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));

@@ -1,8 +1,8 @@
 // src/components/orders/OrderEditModal.jsx
 import React, { useEffect, useState, useCallback } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
-const OrderEditModal = ({ order, token, onClose, onSave }) => {
+const OrderEditModal = ({ order, onClose, onSave }) => {
   const [editDate, setEditDate] = useState(order.orderDate.split("T")[0]);
   const [items, setItems] = useState([...order.items]);
   const [availableProducts, setAvailableProducts] = useState([]);
@@ -11,17 +11,11 @@ const OrderEditModal = ({ order, token, onClose, onSave }) => {
   useEffect(() => {
     const companyName = order.distributorId?.company || order.distributorId?.name;
     if (companyName) {
-      fetch(`${config.API_BASE}/products/company/${encodeURIComponent(companyName)}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-        .then(res => {
-          if (!res.ok) throw new Error("Product fetch failed");
-          return res.json();
-        })
+      apiService.get(`/products/company/${encodeURIComponent(companyName)}`)
         .then(data => setAvailableProducts(data))
         .catch(err => console.error(err));
     }
-  }, [order, token]);
+  }, [order]);
 
   // Change quantity
   const changeQuantity = (index, delta) => {
@@ -102,7 +96,7 @@ const OrderEditModal = ({ order, token, onClose, onSave }) => {
     ]);
   };
 
-  const saveChanges = () => {
+  const saveChanges = async () => {
     if (order.locked || order.status === "delivered") return;
     const payloadItems = items.map(i => ({
       productId: i.productId._id || i.productId,
@@ -110,24 +104,18 @@ const OrderEditModal = ({ order, token, onClose, onSave }) => {
       unit: i.unit
     }));
 
-    fetch(`${config.API_BASE}/orders/${order._id}`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
+    try {
+      const updated = await apiService.put(`/orders/${order._id}`, {
         orderDate: editDate,
         items: payloadItems
-      })
-    })
-      .then(res => res.json())
-      .then(updated => {
-        if (!updated.error) {
-          onSave(updated);
-        }
-      })
-      .catch(() => {});
+      });
+      
+      if (!updated.error) {
+        onSave(updated);
+      }
+    } catch (error) {
+      console.error("Failed to update order:", error);
+    }
   };
 
   // Filter remaining products

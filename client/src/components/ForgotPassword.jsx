@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import config from "../config";
+import apiService from "../utils/apiService";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -14,21 +14,10 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${config.API_BASE}/auth/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage("If the email exists, a password reset link has been sent to your email address.");
-      } else {
-        setMessage(data.message || "Failed to send reset email. Please try again.");
-      }
+      await apiService.post('/auth/forgot-password', { email });
+      setMessage("If the email exists, a password reset link has been sent to your email address.");
     } catch (error) {
-      setMessage("Network error. Please check your connection and try again.");
+      setMessage(error.message || "Failed to send reset email. Please try again.");
       console.error("Forgot password error:", error);
     } finally {
       setIsLoading(false);

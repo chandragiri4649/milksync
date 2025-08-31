@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const BillsGenerateManagement = () => {
   const { token } = useAuth();
@@ -76,27 +76,19 @@ const BillsGenerateManagement = () => {
   // Fetch distributors list
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch distributors");
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       console.error(err);
       setMessage("❌ Failed to fetch distributors.");
     }
-  }, [token]);
+  }, []);
 
   // Fetch bills list
   const fetchBills = useCallback(async () => {
     setLoadingBills(true);
     try {
-      const res = await fetch(`${config.API_BASE}/bills`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch bills");
-      const billsData = await res.json();
+      const billsData = await apiService.get('/bills');
       setBills(billsData);
     } catch (err) {
       console.error(err);

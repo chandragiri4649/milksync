@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // For redirecting after successful login
+import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 import config from "../config"; // Import config for API base URL
 
 const DistributorLogin = () => {
@@ -9,6 +10,46 @@ const DistributorLogin = () => {
   const [message, setMessage] = useState("");   // Success or error feedback
   const [isLoading, setIsLoading] = useState(false); // Loading state
   const navigate = useNavigate(); // Navigation hook for page redirection
+  const { login, isAuthenticated, userType, isLoading: authLoading } = useAuth(); // Get auth state and login function
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && userType) {
+      // Redirect to appropriate dashboard based on user type
+      switch (userType) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'staff':
+          navigate('/staff/dashboard');
+          break;
+        case 'distributor':
+          navigate('/distributor/dashboard');
+          break;
+        default:
+          break;
+      }
+    }
+  }, [isAuthenticated, userType, authLoading, navigate]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (isAuthenticated && userType) {
+    return null; // Will redirect in useEffect
+  }
 
   // Login form submit handler
   const handleLogin = async (e) => {
@@ -17,36 +58,21 @@ const DistributorLogin = () => {
     setIsLoading(true); // Start loading
 
     try {
-      // Send login credentials to backend API
-      const response = await fetch(`${config.API_BASE}/distributor/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      console.log("🚀 DistributorLogin - Starting login process for username:", username);
+      
+      // Use the new session-based login
+      const response = await login({ username, password }, 'distributor');
+      
+      console.log("✅ DistributorLogin - Login successful:", response);
+      setMessage("Login successful!");
 
-      let data = {};
-      // Try parsing the JSON response
-      try {
-        data = await response.json();
-      } catch {
-        setMessage("Invalid server response.");
-        return;
-      }
-
-      // If login is successful and token is received
-      if (response.ok && data.token) {
-        localStorage.setItem("distributorToken", data.token); // Save token locally
-        setMessage("Login successful!");
-
-        // Redirect to distributor dashboard
-        setTimeout(() => navigate("/distributor/dashboard"), 100);
-      } else {
-        // Show error message from server or default message
-        setMessage(data.message || "Login failed.");
-      }
-    } catch {
-      // Handle network/request errors
-      setMessage("An error occurred. Please try again.");
+      // Navigate to dashboard after short delay
+      setTimeout(() => {
+        navigate("/distributor/dashboard");
+      }, 100);
+    } catch (error) {
+      console.error("❌ DistributorLogin - Login error:", error);
+      setMessage(error.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false); // Stop loading
     }

@@ -2,19 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const distributorController = require("../controllers/distributorController");
-const authMiddleware = require("../middlewares/authMiddleware");
-const adminOrStaffMiddleware = require("../middlewares/adminOrStaffMiddleware");
+const { isAuthenticated, hasRole } = require("../middlewares/sessionMiddleware");
 
 // --- Public distributor login ---
 router.post("/login", distributorController.distributorLogin);
 
-// --- Protect all below ---
-router.use(authMiddleware);
-
 // --- Profile (self) ---
-router.get("/profile", distributorController.getDistributorProfile);
+router.get("/profile", isAuthenticated, hasRole('distributor'), distributorController.getDistributorProfile);
 
-router.get("/", adminOrStaffMiddleware, distributorController.getAllDistributors);
+router.get("/", isAuthenticated, hasRole(['admin', 'staff']), distributorController.getAllDistributors);
 
 
 

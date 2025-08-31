@@ -5,17 +5,15 @@ const adminController = require("../controllers/adminController");
 const staffController = require("../controllers/staffController");
 const distributorController = require("../controllers/distributorController");
 
+const { isAuthenticated, hasRole, getCurrentUser } = require("../middlewares/sessionMiddleware");
 
-
-const authMiddleware = require("../middlewares/authMiddleware");
-const adminRoleMiddleware = require("../middlewares/adminRoleMiddleware");
-const adminOrStaffMiddleware = require("../middlewares/adminOrStaffMiddleware");
-
-// --- Public admin login ---
+// --- Public admin routes ---
 router.post("/login", adminController.login);
+router.post("/logout", adminController.logout);
+router.get("/session", adminController.getSessionInfo);
 
 // --- Protect all below as admin-only ---
-router.use(authMiddleware, adminRoleMiddleware);
+router.use(isAuthenticated, hasRole('admin'));
 
 // --- Staff management ---
 router.get("/staff", staffController.getAllStaff);

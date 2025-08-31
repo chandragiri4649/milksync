@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 export default function DistributorDeliveryHistory() {
   const [deliveredOrders, setDeliveredOrders] = useState([]);
@@ -15,35 +15,11 @@ export default function DistributorDeliveryHistory() {
   // Fetch delivered orders for the logged-in distributor
   useEffect(() => {
     const fetchDeliveredOrders = async () => {
-      const token = getDistributorToken();
-      
-      if (!token) {
-        setMessage("Authentication required. Please login again.");
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         
         // Fetch all orders for this distributor and filter for delivered ones
-        const response = await fetch(`${config.API_BASE}/orders/distributor/my-orders`, {
-          headers: { 
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            setMessage("Authentication failed. Please login again.");
-            localStorage.removeItem("distributorToken");
-            return;
-          }
-          throw new Error(`Failed to fetch orders: ${response.status}`);
-        }
-
-        const data = await response.json();
+        const data = await apiService.get('/orders/distributor/my-orders');
         
         // Filter only delivered orders
         if (Array.isArray(data)) {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const StaffList = () => {
   const { token } = useAuth();
@@ -16,15 +16,7 @@ const StaffList = () => {
   const fetchStaff = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.API_BASE}/admin/staff`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch staff");
-      }
-
-      const data = await res.json();
+      const data = await apiService.get('/admin/staff');
       setStaff(data);
     } catch (err) {
       console.error("Could not fetch staff:", err);
@@ -32,7 +24,7 @@ const StaffList = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchStaff();

@@ -4,6 +4,9 @@ const cors = require("cors");
 const path = require("path");
 const multer = require("multer");
 
+// Import session configuration
+const { sessionMiddleware, cookieMiddleware } = require("./config/session");
+
 const app = express();
 
 // Import your route files
@@ -17,17 +20,27 @@ const walletRoutes = require("./routes/walletRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const authRoutes = require("./routes/authRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
+const sessionRoutes = require("./routes/sessionRoutes");
 
 
 
 
 // Enable Cross-Origin Resource Sharing for frontend requests
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true, // Allow cookies to be sent with requests
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  exposedHeaders: ['Set-Cookie']
+}));
+
+// Session and cookie middleware (must come before other middleware)
+app.use(cookieMiddleware);
+app.use(sessionMiddleware);
 
 // Middleware to parse incoming JSON requests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-;
 
 // Serve images statically with debugging
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -44,6 +57,61 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Server is running", timestamp: new Date().toISOString() });
 });
 
+// Test endpoint to verify session is working
+app.get("/api/session-test", (req, res) => {
+  console.log('🔍 Session test - Session object:', req.session);
+  console.log('🔍 Session test - Cookies:', req.headers.cookie);
+  
+  if (req.session && req.session.userId) {
+    res.json({ 
+      message: "Session is working", 
+      session: {
+        userId: req.session.userId,
+        userRole: req.session.userRole,
+        username: req.session.username
+      }
+    });
+  } else {
+    res.json({ 
+      message: "No active session", 
+      session: req.session,
+      cookies: req.headers.cookie ? 'Present' : 'Missing'
+    });
+  }
+});
+
+// Test endpoint to create a simple session
+app.get("/api/create-test-session", (req, res) => {
+  req.session.testData = {
+    userId: 'test-user-123',
+    userRole: 'test',
+    username: 'testuser',
+    timestamp: new Date().toISOString()
+  };
+  
+  console.log('🔍 Test session created:', req.session);
+  
+  res.json({ 
+    message: "Test session created", 
+    sessionId: req.session.id,
+    sessionData: req.session.testData
+  });
+});
+
+// Debug endpoint to show all request headers and cookies
+app.get("/api/debug-headers", (req, res) => {
+  console.log('🔍 Debug headers - All request headers:', req.headers);
+  console.log('🔍 Debug headers - Session object:', req.session);
+  
+  res.json({
+    message: "Debug info",
+    headers: req.headers,
+    cookies: req.headers.cookie || 'No cookies',
+    session: req.session || 'No session',
+    sessionId: req.session?.id || 'No session ID'
+  });
+});
+
 // Mount routers with distinct base paths
 app.use("/api/admin", adminRoutes);
 app.use("/api/staff", staffRoutes);
@@ -55,6 +123,7 @@ app.use("/api/wallets", walletRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", uploadRoutes);
+app.use("/api", sessionRoutes);
 
 
 

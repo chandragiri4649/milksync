@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import config from '../config';
+import apiService from '../utils/apiService';
 
 const ContactDetails = () => {
   const { token } = useAuth();
@@ -27,18 +27,7 @@ const ContactDetails = () => {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${config.API_BASE}/admin/contact-details`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch contact details');
-      }
-
-      const data = await response.json();
+      const data = await apiService.get('/admin/contact-details');
       setContacts(data);
     } catch (err) {
       setError('Failed to fetch contact details: ' + err.message);
@@ -62,26 +51,14 @@ const ContactDetails = () => {
       setError('');
       setSuccess('');
 
-      const url = editingId 
-        ? `${config.API_BASE}/admin/contact-details/${editingId}`
-        : `${config.API_BASE}/admin/contact-details`;
-      
-      const method = editingId ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save contact details');
+      if (editingId) {
+        await apiService.put(`/admin/contact-details/${editingId}`, formData);
+        setSuccess('Contact details updated successfully!');
+      } else {
+        await apiService.post('/admin/contact-details', formData);
+        setSuccess('Contact details saved successfully!');
       }
 
-      setSuccess(editingId ? 'Contact details updated successfully!' : 'Contact details saved successfully!');
       setFormData({
         adminName: '',
         adminContact: '',
