@@ -1,0 +1,29 @@
+# Copy this file to .env and fill in your actual values
+# Production Environment Variables
+
+NODE_ENV=production
+PORT=5000
+
+# Database - Replace with your MongoDB Atlas connection string
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/milksync
+
+# CORS - Replace with your deployed client URL  
+FRONTEND_URL=https://your-deployed-client-url.com
+
+# Session Security - Generate a secure random string (32+ characters)
+SESSION_SECRET=your-very-secure-random-secret-key-here-minimum-32-characters
+
+# Cloudinary Configuration (for image uploads)
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+
+# Email Configuration (optional)
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-password
+
+# Instructions:
+# 1. Copy this file to server/.env
+# 2. Replace all placeholder values with your actual values
+# 3. Never commit .env to git (it's already in .gitignore)
+# 4. For deployment platforms, set these as environment variables in your dashboard

@@ -5,6 +5,35 @@ const Admin = require('../models/Admin');
 const Staff = require('../models/Staff');
 const Distributor = require('../models/Distributor');
 
+// Debug endpoint for deployment troubleshooting
+router.get('/debug', (req, res) => {
+  res.json({
+    status: "Debug Info",
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'not set',
+      PORT: process.env.PORT || 'not set',
+      MONGODB_URI: process.env.MONGODB_URI ? 'configured' : 'not set',
+      FRONTEND_URL: process.env.FRONTEND_URL || 'not set',
+      SESSION_SECRET: process.env.SESSION_SECRET ? 'configured' : 'not set'
+    },
+    cors: {
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      credentials: true
+    },
+    session: {
+      userId: req.session?.userId || 'no session',
+      userRole: req.session?.userRole || 'no role',
+      sessionId: req.sessionID || 'no session ID'
+    },
+    headers: {
+      origin: req.get('Origin') || 'no origin',
+      userAgent: req.get('User-Agent') || 'no user agent',
+      cookie: req.get('Cookie') ? 'present' : 'missing'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Generic session check endpoint
 router.get('/session', isAuthenticated, async (req, res) => {
   try {
