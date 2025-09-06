@@ -70,11 +70,11 @@ export default function DistributorOrderHistory() {
   }
 
   return (
-    <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
+    <div className="container-fluid px-4 py-2" style={{ maxWidth: '1200px' }}>
       {/* Header */}
-      <div className="text-center mb-4 p-4 bg-warning bg-gradient rounded-4 text-dark shadow">
-        <h2 className="mb-2 fw-semibold" style={{ fontSize: '2.2rem' }}>Pending Orders</h2>
-        <p className="mb-0 fs-5 opacity-75">Orders that need to be delivered tomorrow</p>
+      <div className="text-center mb-3 p-3 bg-warning bg-gradient rounded-4 text-dark shadow">
+        <h2 className="mb-1 fw-semibold" style={{ fontSize: '1.5rem' }}>Pending Orders</h2>
+        <p className="mb-0 small opacity-75">Orders that need to be delivered tomorrow</p>
       </div>
 
       {/* Message Display */}
@@ -93,20 +93,20 @@ export default function DistributorOrderHistory() {
 
 
       {/* Summary Statistics */}
-      <div className="row g-3 mb-4">
+      <div className="row g-2 mb-3">
         <div className="col-6">
-          <div className="card bg-warning bg-opacity-10 border-warning border-start border-4 h-100">
-            <div className="card-body text-center">
-              <div className="fw-semibold text-muted small">Total Pending Orders</div>
-              <div className="fs-4 fw-bold text-dark">{orders.length}</div>
+          <div className="card bg-warning bg-opacity-10 border-warning border-start border-3 h-100">
+            <div className="card-body text-center py-2">
+              <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Total Pending Orders</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{orders.length}</div>
             </div>
           </div>
         </div>
         <div className="col-6">
-          <div className="card bg-info bg-opacity-10 border-info border-start border-4 h-100">
-            <div className="card-body text-center">
-              <div className="fw-semibold text-muted small">Ready for Delivery</div>
-              <div className="fs-4 fw-bold text-dark">{orders.length}</div>
+          <div className="card bg-info bg-opacity-10 border-info border-start border-3 h-100">
+            <div className="card-body text-center py-2">
+              <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Ready for Delivery</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{orders.length}</div>
             </div>
           </div>
         </div>
@@ -140,6 +140,14 @@ export default function DistributorOrderHistory() {
                         <div className="d-flex justify-content-between">
                           <span className="text-muted small">Delivery Date:</span>
                           <span className="fw-semibold text-primary">
+                            {new Date(order.deliveryDate || order.orderDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted small">Order Placed:</span>
+                          <span className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>
                             {new Date(order.orderDate).toLocaleDateString()}
                           </span>
                         </div>
@@ -153,16 +161,40 @@ export default function DistributorOrderHistory() {
                     </div>
                     
                     <div className="mb-3">
-                      <div className="fw-semibold text-muted small mb-2">Order Items:</div>
-                      <div className="small">
-                        {order.items?.slice(0, 3).map((item, idx) => (
-                          <div key={idx} className="text-dark mb-1">
-                            • <strong>{item.productId?.name || 'N/A'}</strong> - {item.quantity} {item.unit || 'units'}
+                      <div className="fw-semibold text-muted small mb-2">Order Items ({order.items?.length || 0}):</div>
+                      <div className="row g-2">
+                        {order.items?.map((item, idx) => (
+                          <div key={idx} className="col-12">
+                            <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded border">
+                              <div className="d-flex align-items-center">
+                                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                     style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
+                                  {idx + 1}
+                                </div>
+                                <div>
+                                  <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
+                                    {item.productId?.name || 'N/A'}
+                                  </div>
+                                  {item.productId?.productQuantity && item.productId?.productUnit && (
+                                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                      {item.productId.productQuantity}{item.productId.productUnit} pack
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-end">
+                                <div className="fw-bold text-primary" style={{ fontSize: '0.85rem' }}>
+                                  {item.quantity} {item.unit || 'units'}
+                                </div>
+                                {item.costPerUnit && (
+                                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                    ₹{item.costPerUnit} each
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         ))}
-                        {order.items?.length > 3 && (
-                          <div className="text-muted small">+{order.items.length - 3} more items</div>
-                        )}
                       </div>
                     </div>
                   </div>

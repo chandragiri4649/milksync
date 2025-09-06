@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const WalletManagement = () => {
-  const { token } = useAuth();
   const [distributors, setDistributors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
   const [selectedDistributor, setSelectedDistributor] = useState("");
   const [transactionHistory, setTransactionHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -25,6 +24,7 @@ const WalletManagement = () => {
       const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
+      toast.error(err.message || "Error fetching distributors");
       setError(err.message || "Error fetching distributors");
     } finally {
       setLoading(false);
@@ -53,41 +53,35 @@ const WalletManagement = () => {
 
   const creditWallet = async (distributorId, amount) => {
     if (isNaN(amount) || amount <= 0) {
-      setMessage("Enter a valid positive amount");
+      toast.error("Enter a valid positive amount");
       return;
     }
-    setMessage(null);
     try {
       const data = await apiService.post(`/wallets/${distributorId}/credit`, { amount: parseFloat(amount) });
-      setMessage(
-        `✅ Wallet credited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`
-      );
+      toast.success(`Wallet credited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`);
       fetchDistributors(); // Refresh
       if (distributorId === selectedDistributor) {
         fetchTransactionHistory(distributorId);
       }
     } catch (err) {
-      setMessage(`❌ ${err.message || "Error crediting wallet"}`);
+      toast.error(err.message || "Error crediting wallet");
     }
   };
 
   const debitWallet = async (distributorId, amount) => {
     if (isNaN(amount) || amount <= 0) {
-      setMessage("Enter a valid positive amount");
+      toast.error("Enter a valid positive amount");
       return;
     }
-    setMessage(null);
     try {
             const data = await apiService.post(`/wallets/${distributorId}/debit`, { amount: parseFloat(amount) });
-      setMessage(
-        `✅ Wallet debited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`
-      );
+      toast.success(`Wallet debited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`);
       fetchDistributors(); // Refresh
       if (distributorId === selectedDistributor) {
         fetchTransactionHistory(distributorId);
       }
     } catch (err) {
-      setMessage(`❌ ${err.message || "Error debiting wallet"}`);
+      toast.error(err.message || "Error debiting wallet");
     }
   };
 
@@ -107,7 +101,7 @@ const WalletManagement = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(dist => {
-        const name = dist.distributorName || dist.name || '';
+        const name = dist.distributorName || dist.companyName || '';
         const username = dist.username || '';
         
         return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -141,14 +135,14 @@ const WalletManagement = () => {
   const exportToCSV = () => {
     const filteredDistributors = getFilteredDistributors();
     if (filteredDistributors.length === 0) {
-      setMessage("No distributors to export");
+      toast.warning("No distributors to export");
       return;
     }
 
     const csvContent = [
       ["Distributor Name", "Username", "Wallet Balance", "Status"],
       ...filteredDistributors.map(dist => [
-        dist.distributorName || dist.name || "Unknown",
+        dist.distributorName || dist.companyName || "Unknown",
         dist.username || "N/A",
         `₹${(dist.walletBalance || 0).toFixed(2)}`,
         (dist.walletBalance || 0) < 1000 ? "Low Balance" : "Good Balance"
@@ -162,7 +156,7 @@ const WalletManagement = () => {
     a.download = `wallet_data_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setMessage("Wallet data exported successfully!");
+    toast.success("Wallet data exported successfully!");
   };
 
   // Calculate summary statistics
@@ -229,52 +223,64 @@ const WalletManagement = () => {
         <div className="row mb-4">
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-primary">
-              <div className="card-body text-center">
-                <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-wallet text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-primary mb-1">₹{summaryStats.totalBalance.toFixed(2)}</h4>
-                  <p className="mb-0 text-muted">Total Balance</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-wallet text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Total Balance</h6>
+                    <h4 className="mb-0 fw-bold text-primary">₹{summaryStats.totalBalance.toFixed(2)}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-info">
-              <div className="card-body text-center">
-                <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-users text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-info mb-1">{summaryStats.totalDistributors}</h4>
-                  <p className="mb-0 text-muted">Total Distributors</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-users text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Total Distributors</h6>
+                    <h4 className="mb-0 fw-bold text-info">{summaryStats.totalDistributors}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-warning">
-              <div className="card-body text-center">
-                <div className="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-exclamation-triangle text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-warning mb-1">{summaryStats.lowBalanceCount}</h4>
-                  <p className="mb-0 text-muted">Low Balance</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-exclamation-triangle text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Low Balance</h6>
+                    <h4 className="mb-0 fw-bold text-warning">{summaryStats.lowBalanceCount}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-success">
-              <div className="card-body text-center">
-                <div className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-chart-line text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-success mb-1">{summaryStats.highBalanceCount}</h4>
-                  <p className="mb-0 text-muted">High Balance</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-chart-line text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">High Balance</h6>
+                    <h4 className="mb-0 fw-bold text-success">{summaryStats.highBalanceCount}</h4>
+                  </div>
                 </div>
               </div>
             </div>
@@ -286,8 +292,8 @@ const WalletManagement = () => {
           <div className="col-12">
             <div className="card border shadow-sm">
               <div className="card-body">
-                <div className="row g-3">
-                  <div className="col-lg-4 col-md-6">
+                <div className="d-flex align-items-center justify-content-between gap-3">
+                  <div className="d-flex align-items-center gap-3">
                     <div className="position-relative">
                       <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                       <input
@@ -296,64 +302,47 @@ const WalletManagement = () => {
                         placeholder="Search distributors..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ width: '200px' }}
                       />
                     </div>
-                  </div>
-                  <div className="col-lg-3 col-md-6">
                     <select
                       className="form-select"
                       value={selectedBalanceFilter}
                       onChange={(e) => setSelectedBalanceFilter(e.target.value)}
+                      style={{ width: '180px' }}
                     >
                       <option value="">All Balances</option>
                       <option value="low">Low Balance (&lt;₹1000)</option>
                       <option value="medium">Medium Balance (₹1000-₹5000)</option>
                       <option value="high">High Balance (&gt;₹5000)</option>
                     </select>
-                  </div>
-                  <div className="col-lg-3 col-md-6">
-                    <button className="btn btn-outline-primary w-100" onClick={exportToCSV}>
-                      <i className="fas fa-download me-2"></i>
-                      Export CSV
+                    <button className="btn btn-outline-secondary" onClick={() => {
+                      setSearchTerm("");
+                      setSelectedBalanceFilter("");
+                    }}>
+                      <i className="fas fa-refresh me-2"></i>
+                      Clear
                     </button>
                   </div>
-
+                  <div className="btn-group" role="group">
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('cards')}
+                    >
+                      <i className="fas fa-th-large me-2"></i>
+                      Cards
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('table')}
+                    >
+                      <i className="fas fa-table me-2"></i>
+                      Table
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Feedback Message */}
-        {message && (
-          <div className="alert alert-info alert-dismissible fade show">
-            <i className="fas fa-info-circle me-2"></i>
-            {message}
-            <button type="button" className="btn-close" onClick={() => setMessage(null)}></button>
-          </div>
-        )}
-
-        {/* View Mode Toggle */}
-        <div className="row mb-3">
-          <div className="col-12">
-            <div className="d-flex justify-content-center">
-              <div className="btn-group" role="group">
-                <button
-                  type="button"
-                  className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                  onClick={() => setViewMode('cards')}
-                >
-                  <i className="fas fa-th-large me-2"></i>
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-                  onClick={() => setViewMode('table')}
-                >
-                  <i className="fas fa-table me-2"></i>
-                  Table
-                </button>
               </div>
             </div>
           </div>
@@ -606,8 +595,22 @@ const WalletManagement = () => {
             </div>
           </div>
         )}
-    </div>
-  );
-};
+        
+        {/* Toast Container for notifications */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+      </div>
+    );
+  };
 
 export default WalletManagement;

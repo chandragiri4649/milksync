@@ -6,6 +6,7 @@ const staffController = require("../controllers/staffController");
 const distributorController = require("../controllers/distributorController");
 
 const { isAuthenticated, hasRole, getCurrentUser } = require("../middlewares/sessionMiddleware");
+const { upload, handleUploadError } = require("../middlewares/cloudinaryUpload");
 
 // --- Public admin routes ---
 router.post("/login", adminController.login);
@@ -17,8 +18,8 @@ router.use(isAuthenticated, hasRole('admin'));
 
 // --- Staff management ---
 router.get("/staff", staffController.getAllStaff);
-router.post("/staff", staffController.addStaff);
-router.put("/staff/:id", staffController.updateStaff);
+router.post("/staff", upload.single("image"), handleUploadError, staffController.addStaff);
+router.put("/staff/:id", upload.single("image"), handleUploadError, staffController.updateStaff);
 router.delete("/staff/:id", staffController.deleteStaff);
 
 // Debug route to test if PUT is working

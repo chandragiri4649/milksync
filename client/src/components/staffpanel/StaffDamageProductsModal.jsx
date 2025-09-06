@@ -17,21 +17,42 @@ const StaffDamageProductsModal = ({
   useEffect(() => {
     if (order && order.items) {
       const initialDamagedProducts = order.items.map(item => {
+        // Ensure we have the product data
+        const product = item.productId;
+        
+        // Debug logging to see what we're getting
+        console.log('Staff Modal - Processing item:', item);
+        console.log('Staff Modal - Product data:', product);
+        
         // Calculate cost per tub if not available
-        let costPerTub = item.productId.costPerTub;
-        if (!costPerTub && item.productId.costPerPacket && item.productId.packetsPerTub) {
-          costPerTub = item.productId.costPerPacket * item.productId.packetsPerTub;
+        let costPerTub = product?.costPerTub || 0;
+        if (!costPerTub && product?.costPerPacket && product?.packetsPerTub) {
+          costPerTub = product.costPerPacket * product.packetsPerTub;
         }
         
+        // Ensure we have valid data
+        const productId = product?._id || product || item.productId;
+        const productName = product?.name || 'Unknown Product';
+        const packetsPerTub = product?.packetsPerTub || 1;
+        const costPerPacket = product?.costPerPacket || (costPerTub / packetsPerTub);
+        
+        console.log('Staff Modal - Calculated values:', {
+          productId,
+          productName,
+          costPerTub,
+          costPerPacket,
+          packetsPerTub
+        });
+        
         return {
-          productId: item.productId._id || item.productId,
-          productName: item.productId.name || 'Unknown Product',
-          orderedQuantity: item.quantity, // This is in tubs
+          productId: productId,
+          productName: productName,
+          orderedQuantity: item.quantity || 0, // This is in tubs
           damagedQuantity: 0, // This will be in packets
-          unit: item.unit,
-          price: costPerTub || 0, // Price per tub (calculated if needed)
-          costPerPacket: item.productId.costPerPacket || 0, // Cost per packet
-          packetsPerTub: item.productId.packetsPerTub || 1 // Packets per tub
+          unit: item.unit || 'tub',
+          price: costPerTub, // Price per tub
+          costPerPacket: costPerPacket, // Cost per packet
+          packetsPerTub: packetsPerTub // Packets per tub
         };
       });
       setDamagedProducts(initialDamagedProducts);
@@ -51,23 +72,27 @@ const StaffDamageProductsModal = ({
     console.log('Staff Modal - Calculating totals for products:', damagedProducts);
 
     damagedProducts.forEach(product => {
+      // Ensure we have valid numeric values
+      const orderedQty = Number(product.orderedQuantity) || 0;
+      const price = Number(product.price) || 0;
+      const damagedQty = Number(product.damagedQuantity) || 0;
+      const costPerPacket = Number(product.costPerPacket) || 0;
+      
       // Total bill: ordered tubs * price per tub
-      const productTotal = product.orderedQuantity * product.price;
+      const productTotal = orderedQty * price;
       totalBill += productTotal;
       
       // Damaged cost: damaged packets * cost per packet
-      // We need to calculate cost per packet from the product data
-      const costPerPacket = product.costPerPacket || (product.price / (product.packetsPerTub || 1));
-      const damagedCost = product.damagedQuantity * costPerPacket;
+      const damagedCost = damagedQty * costPerPacket;
       totalDamagedCost += damagedCost;
       
       // Debug logging for each product
       console.log(`Staff Modal - Product: ${product.productName}`, {
-        orderedQuantity: product.orderedQuantity,
-        price: product.price,
+        orderedQuantity: orderedQty,
+        price: price,
         productTotal,
-        damagedQuantity: product.damagedQuantity,
-        costPerPacket,
+        damagedQuantity: damagedQty,
+        costPerPacket: costPerPacket,
         damagedCost,
         totalBill,
         totalDamagedCost
@@ -185,6 +210,89 @@ const StaffDamageProductsModal = ({
       costPerPacket: order.items[0].productId?.costPerPacket,
       packetsPerTub: order.items[0].productId?.packetsPerTub
     });
+  }
+
+  // Validate that we have the required data
+  if (!order.items || order.items.length === 0) {
+    console.error('Staff Modal - No items found in order');
+    return (
+      <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="modal-header bg-danger text-white">
+              <h5 className="modal-title">
+                <i className="fas fa-exclamation-triangle me-2"></i>
+                Error - Invalid Order Data
+              </h5>
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={onClose}
+              ></button>
+            </div>
+            <div className="modal-body">
+              <div className="alert alert-danger">
+                <h6>Order data is incomplete or invalid</h6>
+                <p>This order does not contain the required product information. Please contact the administrator.</p>
+                <p><strong>Order ID:</strong> {order._id}</p>
+                <p><strong>Items Count:</strong> {order.items?.length || 0}</p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={onClose}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if we have valid product data for all items
+  const invalidItems = order.items.filter(item => !item.productId || !item.productId.name);
+  if (invalidItems.length > 0) {
+    console.error('Staff Modal - Invalid product data found:', invalidItems);
+    return (
+      <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="modal-header bg-warning text-dark">
+              <h5 className="modal-title">
+                <i className="fas fa-exclamation-triangle me-2"></i>
+                Warning - Incomplete Product Data
+              </h5>
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={onClose}
+              ></button>
+            </div>
+            <div className="modal-body">
+              <div className="alert alert-warning">
+                <h6>Some products in this order have incomplete information</h6>
+                <p>This may affect the accuracy of damage calculations. Please ensure all product data is properly set.</p>
+                <p><strong>Invalid Items:</strong> {invalidItems.length} out of {order.items.length}</p>
+                <p><strong>Order ID:</strong> {order._id}</p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={onClose}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const totals = calculateTotals();

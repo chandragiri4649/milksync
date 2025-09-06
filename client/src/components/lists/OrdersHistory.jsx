@@ -5,10 +5,12 @@ import apiService from "../../utils/apiService";
 import { useAuth } from "../../hooks/useAuth";
 import OrderEditModal from "./OrderEditModal";
 import DamageProductsModal from "./DamageProductsModal";
-
+import ShowOrderModal from "./ShowOrderModal";
+import DeleteModal from "../DeleteModal";
 
 const OrdersHistory = ({ showAllOrders = false }) => {
   const location = useLocation();
+  const { user } = useAuth(); // Add this line to get auth context
   
   // Check if this is being accessed from staff routes
   const isStaffRoute = location.pathname.startsWith('/staff/');
@@ -25,10 +27,16 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   const [loading, setLoading] = useState(true);
   const [showDamageModal, setShowDamageModal] = useState(false);
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrderForView, setSelectedOrderForView] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedOrderForDelete, setSelectedOrderForDelete] = useState(null);
 
   // Get current month and year for default selection
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+  // Fetch distributors for search functionality
 
   // Fetch distributors for search functionality
   const fetchDistributors = useCallback(async () => {
@@ -42,13 +50,12 @@ const OrdersHistory = ({ showAllOrders = false }) => {
 
   // Fetch orders - all orders for admin, user's orders for staff
   useEffect(() => {
-    const endpoint = showAllOrders ? "/orders/all" : "/orders/my-orders";
+    const endpoint = showAllOrders ? "/orders/all" : "/orders";
     setLoading(true);
     
     apiService.get(endpoint)
       .then(data => {
         // Ensure data is always an array
-        console.log(data)
         if (Array.isArray(data)) {
           setOrders(data);
           setSelectedMonth(currentMonth); // Set default month
@@ -87,17 +94,12 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   // Filter orders based on search criteria
   const getFilteredOrders = () => {
     let filtered = safeOrders;
-    console.log("safeOrders", safeOrders)
-    console.log("selectedDistributor", selectedDistributor)
-    console.log("selectedMonth", selectedMonth)
-    console.log("selectedYear", selectedYear)
-    console.log("searchTerm", searchTerm)
+    
     // Filter by distributor
     if (selectedDistributor) {
       filtered = filtered.filter(order => 
-        order.distributorId?.name === selectedDistributor ||
-        order.distributorId?.company === selectedDistributor ||
-        order.distributorId?.distributorName === selectedDistributor
+        order.distributorId?.distributorName === selectedDistributor ||
+        order.distributorId?.companyName === selectedDistributor
       );
     }
 
@@ -124,8 +126,8 @@ const OrdersHistory = ({ showAllOrders = false }) => {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(order => 
-        (order.distributorId?.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.distributorId?.company || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.distributorId?.distributorName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.distributorId?.companyName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.status || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.orderDate || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -135,7 +137,6 @@ const OrdersHistory = ({ showAllOrders = false }) => {
   };
 
   const filteredOrders = getFilteredOrders();
-  console.log("filteredOrders", filteredOrders)
 
   // Filter only delivered orders by selected distributor, month, and year
   const getFilteredDeliveredOrders = () => {
@@ -146,7 +147,7 @@ const OrdersHistory = ({ showAllOrders = false }) => {
 
   // Group pending orders by distributor for card display (unfiltered)
   const groupedPendingOrders = allPendingOrders.reduce((acc, order) => {
-    const distName = order.distributorId?.name || order.distributorId?.company || "Unknown Distributor";
+    const distName = order.distributorId?.companyName || order.distributorId?.distributorName || "Unknown Distributor";
     if (!acc[distName]) acc[distName] = [];
     acc[distName].push(order);
     return acc;
@@ -191,7 +192,7 @@ const OrdersHistory = ({ showAllOrders = false }) => {
       ["Order Date", "Distributor", "Status", "Items Count", "Total Amount", "Placed By"],
       ...ordersToExport.map(order => [
         new Date(order.orderDate).toLocaleDateString(),
-        order.distributorId?.name || order.distributorId?.company || "Unknown",
+        order.distributorId?.distributorName || order.distributorId?.companyName || "Unknown",
         order.status,
         order.items?.length || 0,
         order.items?.reduce((sum, item) => sum + (item.costPerPacket || 0), 0).toFixed(2),
@@ -258,11 +259,35 @@ const OrdersHistory = ({ showAllOrders = false }) => {
 
   // Mark order as delivered
   const markAsDelivered = (order) => {
-    console.log('Marking order as delivered:', order);
-    console.log('Order items:', order.items);
-    console.log('First item product data:', order.items?.[0]?.productId);
     setSelectedOrderForDelivery(order);
     setShowDamageModal(true);
+  };
+
+  // Show order details
+  const showOrderDetails = (order) => {
+    setSelectedOrderForView(order);
+    setShowOrderModal(true);
+  };
+
+  // Show delete order modal
+  const showDeleteOrderModal = (order) => {
+    setSelectedOrderForDelete(order);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!selectedOrderForDelete) return;
+    
+    try {
+      await apiService.delete(`/orders/${selectedOrderForDelete._id}`);
+      setOrders(prev => prev.filter(o => o._id !== selectedOrderForDelete._id));
+      setMessage("Order deleted successfully");
+      setShowDeleteModal(false);
+      setSelectedOrderForDelete(null);
+    } catch (error) {
+      setMessage(error.message || "Failed to delete order");
+    }
   };
 
   // Handle delivery confirmation from damage modal
@@ -290,7 +315,7 @@ const OrdersHistory = ({ showAllOrders = false }) => {
 Order Details:
 - Order ID: ${order._id}
 - Date: ${new Date(order.orderDate).toLocaleDateString()}
-- Distributor: ${order.distributorId?.name || order.distributorId?.company || 'Unknown'}
+- Distributor: ${order.distributorId?.distributorName || order.distributorId?.companyName || 'Unknown'}
 - Status: ${order.status}
 - Items: ${order.items?.length || 0}
 - Placed by: ${order.userId?.name || order.userId?.username || 'Unknown'}
@@ -308,7 +333,7 @@ BILL
 ====
 Order ID: ${order._id}
 Date: ${new Date(order.orderDate).toLocaleDateString()}
-Distributor: ${order.distributorId?.name || order.distributorId?.company || 'Unknown'}
+Distributor: ${order.distributorId?.distributorName || order.distributorId?.companyName || 'Unknown'}
 
 Items:
 ${order.items?.map((item, idx) => `${idx + 1}. ${item.productId?.name || 'N/A'} - ${item.quantity} ${item.unit}`).join('\n') || 'No items'}
@@ -329,7 +354,7 @@ Status: ${order.status}
 
   // Copy order details to clipboard
   const copyOrderDetails = async (order) => {
-    const details = `Order ID: ${order._id}, Date: ${new Date(order.orderDate).toLocaleDateString()}, Distributor: ${order.distributorId?.name || order.distributorId?.company || 'Unknown'}, Status: ${order.status}, Items: ${order.items?.length || 0}`;
+    const details = `Order ID: ${order._id}, Date: ${new Date(order.orderDate).toLocaleDateString()}, Distributor: ${order.distributorId?.distributorName || order.distributorId?.companyName || 'Unknown'}, Status: ${order.status}, Items: ${order.items?.length || 0}`;
     
     try {
       await navigator.clipboard.writeText(details);
@@ -411,41 +436,34 @@ Status: ${order.status}
     }
   };
 
-
-
   if (loading) {
-    const loadingContent = (
-      <div className="container my-4">
+    return (
+      <div className="container-fluid py-4">
         <div className="text-center py-5">
           <i className="fas fa-spinner fa-spin fa-2x text-muted"></i>
-          <p className="mt-3 text-muted">Loading orders...</p>
+          <p className="text-muted mt-3">Loading orders...</p>
         </div>
       </div>
     );
-
-    // Return wrapped with StaffLayout if it's a staff route, otherwise return content directly
-    if (isStaffRoute) {
-      return <div className="container-fluid py-4">{loadingContent}</div>;
-    }
-    
-    return loadingContent;
   }
 
-  // Wrap with StaffLayout if this is a staff route
-  const content = (
+  return (
     <div className="container-fluid py-4">
       {/* Page Header */}
-      <div className="row mb-3">
+      <div className="row mb-4">
         <div className="col-12">
           <div className="d-flex align-items-center">
-            <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '50px', height: '50px'}}>
-              <i className="fas fa-history fa-md text-white"></i>
+            <div 
+              className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+              style={{width: '60px', height: '60px'}}
+            >
+              <i className="fas fa-history fa-lg text-white"></i>
             </div>
             <div>
-              <h3 className="mb-0 fw-bold text-black">
+              <h3 className="mb-0 fw-bold text-dark">
                 {showAllOrders ? "All Orders History" : "My Orders History"}
               </h3>
-              <p className="text-muted mb-0 small">
+              <p className="mb-0 text-muted">
                 {showAllOrders ? "View and manage all system orders" : "Track your order history and status"}
               </p>
             </div>
@@ -462,140 +480,182 @@ Status: ${order.status}
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Dashboard */}
       <div className="row mb-4">
         <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-primary text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-shopping-cart me-2"></i>Total Orders</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-info">{summaryStats.totalOrders}</h3>
-              <p className="mb-0 text-muted">All orders</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-success text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-clock me-2"></i>Pending</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-success">{summaryStats.pendingCount}</h3>
-              <p className="mb-0 text-muted">Awaiting delivery</p>
+          <div className="card border shadow-sm h-100 border-top border-4 border-primary">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-shopping-cart text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Orders</h6>
+                  <h4 className="mb-0 fw-bold text-primary">{summaryStats.totalOrders}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-warning text-dark border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-check-circle me-2"></i>Delivered</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-warning">{summaryStats.deliveredCount}</h3>
-              <p className="mb-0 text-muted">Completed orders</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-danger text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-rupee-sign me-2"></i>Total Value</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-danger">₹{summaryStats.totalAmount.toFixed(2)}</h3>
-              <p className="mb-0 text-muted">Combined value</p>
+          <div className="card border shadow-sm h-100 border-top border-4 border-warning">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-clock text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Pending</h6>
+                  <h4 className="mb-0 fw-bold text-warning">{summaryStats.pendingCount}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-warning text-dark border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-exclamation-triangle me-2"></i>Orders with Damage</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-warning">{summaryStats.ordersWithDamage}</h3>
-              <p className="mb-0 text-muted">Damaged products</p>
+          <div className="card border shadow-sm h-100 border-top border-4 border-success">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-check-circle text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Delivered</h6>
+                  <h4 className="mb-0 fw-bold text-success">{summaryStats.deliveredCount}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div className="col-lg-2 col-md-4 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-danger text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-minus-circle me-2"></i>Total Damaged</h6>
+          <div className="card border shadow-sm h-100 border-top border-4 border-info">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-rupee-sign text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Value</h6>
+                  <h4 className="mb-0 fw-bold text-info">₹{summaryStats.totalAmount.toFixed(2)}</h4>
+                </div>
+              </div>
             </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-danger">{summaryStats.totalDamagedPackets}</h3>
-              <p className="mb-0 text-muted">Packets</p>
+          </div>
+        </div>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-warning">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-exclamation-triangle text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Orders with Damage</h6>
+                  <h4 className="mb-0 fw-bold text-warning">{summaryStats.ordersWithDamage}</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-danger">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-minus-circle text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Damaged</h6>
+                  <h4 className="mb-0 fw-bold text-danger">{summaryStats.totalDamagedPackets}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="card border shadow-sm mb-4">
-        <div className="card-header bg-secondary text-white py-2">
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0"><i className="fas fa-search me-2"></i>Search & Filter Orders</h6>
-            <div className="d-flex gap-2">
-              <button className={`btn btn-sm ${viewMode === 'cards' ? 'btn-light' : 'btn-outline-light'}`} onClick={() => setViewMode('cards')}>
-                <i className="fas fa-th-large me-1"></i>Cards
-              </button>
-              <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-light' : 'btn-outline-light'}`} onClick={() => setViewMode('table')}>
-                <i className="fas fa-table me-1"></i>Table
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="card-body p-3">
-          <div className="row g-3">
-            <div className="col-md-3">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-search me-1"></i>Search
-              </label>
-              <input type="text" className="form-control form-control-sm" placeholder="Search orders..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="col-md-3">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-truck me-1"></i>Distributor
-              </label>
-              <select className="form-select form-select-sm" value={selectedDistributor} onChange={(e) => setSelectedDistributor(e.target.value)}>
-                <option value="">All Distributors</option>
-                {distributors.map(dist => (
-                  <option key={dist._id} value={dist.name || dist.company}>
-                    {dist.name || dist.company}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-calendar me-1"></i>Month
-              </label>
-              <select className="form-select form-select-sm" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-                <option value="">All Months</option>
-                {getMonthOptions().map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-calendar-alt me-1"></i>Year
-              </label>
-              <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                {getYearOptions().map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2 d-flex align-items-end gap-2">
-              <button className="btn btn-sm btn-outline-info flex-fill" onClick={() => { setSelectedDistributor(""); setSelectedMonth(""); setSelectedYear(""); setSearchTerm(""); }}>
-                <i className="fas fa-refresh me-1"></i>Clear
-              </button>
-              <button className="btn btn-sm btn-success flex-fill" onClick={exportToCSV}>
-                <i className="fas fa-download me-1"></i>Export
-              </button>
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card border shadow-sm">
+            <div className="card-body">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="position-relative">
+                    <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input
+                      type="text"
+                      className="form-control ps-5"
+                      placeholder="Search orders, distributors..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '250px' }}
+                    />
+                  </div>
+                  <select
+                    className="form-select"
+                    value={selectedDistributor}
+                    onChange={(e) => setSelectedDistributor(e.target.value)}
+                    style={{ width: '180px' }}
+                  >
+                    <option value="">All Distributors</option>
+                    {distributors.map(dist => (
+                      <option key={dist._id} value={dist.companyName || dist.distributorName}>
+                        {dist.companyName || dist.distributorName}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    style={{ width: '150px' }}
+                  >
+                    <option value="">All Months</option>
+                    {getMonthOptions().map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    style={{ width: '120px' }}
+                  >
+                    {getYearOptions().map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-outline-primary" onClick={exportToCSV}>
+                    <i className="fas fa-download me-2"></i>
+                    Export
+                  </button>
+                </div>
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="fas fa-th-large me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="fas fa-table me-2"></i>
+                    Table
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -603,58 +663,51 @@ Status: ${order.status}
 
       {/* Bulk Actions */}
       {filteredOrders.length > 0 && (
-        <div className="card border shadow-sm mb-4">
-          <div className="card-header bg-success text-white py-2">
-            <h6 className="mb-0">
-              <i className="fas fa-tasks me-2"></i>
-              Bulk Actions
-            </h6>
-          </div>
-          <div className="card-body p-3">
-            <div className="row align-items-center">
-              <div className="col-md-4">
-                <div className="form-check">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="selectAllOrders"
-                    checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
-                    onChange={selectAllOrders}
-                  />
-                  <label className="form-check-label" htmlFor="selectAllOrders">
-                    Select All ({selectedOrders.length}/{filteredOrders.length})
-                  </label>
-                </div>
-              </div>
-              <div className="col-md-8">
-                <div className="d-flex gap-2">
-                  <button 
-                    className="btn btn-success btn-sm" 
-                    onClick={bulkMarkAsDelivered}
-                    disabled={selectedOrders.length === 0}
-                    title="Mark selected orders as delivered"
-                  >
-                    <i className="fas fa-check me-1"></i>
-                    Mark Delivered ({selectedOrders.length})
-                  </button>
-                  <button 
-                    className="btn btn-danger btn-sm" 
-                    onClick={bulkDeleteOrders}
-                    disabled={selectedOrders.length === 0}
-                    title="Delete selected orders"
-                  >
-                    <i className="fas fa-trash me-1"></i>
-                    Delete ({selectedOrders.length})
-                  </button>
-                  <button 
-                    className="btn btn-secondary btn-sm" 
-                    onClick={() => setSelectedOrders([])}
-                    disabled={selectedOrders.length === 0}
-                    title="Clear selection"
-                  >
-                    <i className="fas fa-times me-1"></i>
-                    Clear Selection
-                  </button>
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card border shadow-sm">
+              <div className="card-body">
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="selectAllOrders"
+                        checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+                        onChange={selectAllOrders}
+                      />
+                      <label className="form-check-label" htmlFor="selectAllOrders">
+                        Select All ({selectedOrders.length}/{filteredOrders.length})
+                      </label>
+                    </div>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      className="btn btn-success btn-sm" 
+                      onClick={bulkMarkAsDelivered}
+                      disabled={selectedOrders.length === 0}
+                    >
+                      <i className="fas fa-check me-1"></i>
+                      Mark Delivered ({selectedOrders.length})
+                    </button>
+                    <button 
+                      className="btn btn-danger btn-sm" 
+                      onClick={bulkDeleteOrders}
+                      disabled={selectedOrders.length === 0}
+                    >
+                      <i className="fas fa-trash me-1"></i>
+                      Delete ({selectedOrders.length})
+                    </button>
+                    <button 
+                      className="btn btn-secondary btn-sm" 
+                      onClick={() => setSelectedOrders([])}
+                      disabled={selectedOrders.length === 0}
+                    >
+                      <i className="fas fa-times me-1"></i>
+                      Clear Selection
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -665,10 +718,8 @@ Status: ${order.status}
       {/* Orders Display */}
       {filteredOrders.length === 0 ? (
         <div className="text-center py-5">
-          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '80px', height: '80px' }}>
-            <i className="fas fa-history fa-2x text-muted"></i>
-          </div>
-          <h5 className="text-muted">No Orders Found</h5>
+          <i className="fas fa-history fa-3x text-muted mb-3"></i>
+          <h6 className="text-muted">No Orders Found</h6>
           <p className="text-muted">
             {safeOrders.length === 0 ? "No orders are currently available" : "No orders match your search criteria"}
           </p>
@@ -681,18 +732,25 @@ Status: ${order.status}
               {/* Pending Orders Section */}
               {Object.keys(groupedPendingOrders).length > 0 && (
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">
-                    <i className="fas fa-clock me-2"></i>
+                  <h5 className="fw-bold text-dark mb-3">
+                    <i className="fas fa-clock me-2 text-muted"></i>
                     Pending Orders
                   </h5>
                   {Object.keys(groupedPendingOrders).map((distName) => (
-                    <div key={distName} className="mb-3">
-                      <h6 className="text-muted mb-2">{distName}</h6>
-                      <div className="row">
+                    <div key={distName} className="mb-4">
+                      <div className="row mb-3">
+                        <div className="col-12">
+                          <h5 className="fw-bold text-dark">
+                            <i className="fas fa-building me-2 text-muted"></i>
+                            {distName}
+                          </h5>
+                        </div>
+                      </div>
+                      <div className="row g-4">
                         {groupedPendingOrders[distName].map((order) => (
-                          <div key={order._id} className="col-lg-4 col-md-6 mb-3">
+                          <div key={order._id} className="col-lg-4 col-md-6 col-sm-6">
                             <div className="card border shadow-sm h-100">
-                              <div className="card-header bg-success text-white">
+                              <div className="card-header bg-success text-dark">
                                 <div className="d-flex align-items-center justify-content-between">
                                   <div className="d-flex align-items-center">
                                     <div className="form-check me-2">
@@ -703,100 +761,70 @@ Status: ${order.status}
                                         onChange={() => toggleOrderSelection(order._id)}
                                       />
                                     </div>
-                                    <div className="bg-white rounded-circle d-flex align-items-center justify-content-center" style={{width: '24px', height: '24px'}}>
+                                    <div className="bg-white rounded-circle d-flex align-items-center justify-content-center"
+                                      style={{ width: '40px', height: '40px' }}>
                                       <i className="fas fa-clock fa-sm text-success"></i>
                                     </div>
                                   </div>
-                                  <span className="badge bg-warning text-dark px-2 py-1">Pending</span>
+                                  <span className="badge bg-light text-dark px-2 py-1">Pending</span>
                                 </div>
                               </div>
-                              <div className="card-body d-flex flex-column p-3">
-                                <h6 className="card-title fw-bold mb-2 text-dark">
-                                  Order #{order._id.slice(-6)}
-                                </h6>
-                                <div className="mb-3">
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-calendar me-2 text-muted"></i>
-                                    <span className="fw-semibold small text-muted">Date:</span>
-                                    <span className="ms-2 small">
-                                      {new Date(order.orderDate).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-boxes me-2 text-muted"></i>
-                                    <span className="fw-semibold small text-muted">Items:</span>
-                                    <span className="ms-2 small">{order.items?.length || 0}</span>
-                                  </div>
-                                                                  {order.userId && (
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-user me-2 text-muted"></i>
-                                    <span className="fw-semibold small text-muted">Placed by:</span>
-                                    <span className="ms-2 small">
-                                      {order.userId.name || order.userId.username || "Unknown"}
-                                    </span>
-                                  </div>
-                                )}
+                              <div className="card-body">
+                                <h6 className="card-title fw-bold text-center mb-3">Order #{order._id.slice(-6)}</h6>
                                 
-                                {/* Delivered By Information - Only show for delivered orders */}
-                                {order.status === 'delivered' && order.updatedBy && (
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-user-check me-2 text-success"></i>
-                                    <span className="fw-semibold small text-success">Delivered by:</span>
-                                    <span className="ms-2 small text-success">
-                                      {order.updatedBy.role === 'admin' ? 'Admin' : 'Staff'}: {order.updatedBy.name}
-                                    </span>
-                                  </div>
-                                )}
-                                
-                                {/* Damaged Products Information */}
-                                {order.damagedProducts && order.damagedProducts.length > 0 && (
-                                  <>
-                                    <div className="d-flex align-items-center mb-2">
-                                      <i className="fas fa-exclamation-triangle me-2 text-danger"></i>
-                                      <span className="fw-semibold small text-danger">Total Damaged:</span>
-                                      <span className="ms-2 small text-danger fw-bold">
-                                        {order.damagedProducts.reduce((sum, item) => sum + (item.damagedPackets || item.quantity || 0), 0)} packets
-                                      </span>
-                                    </div>
-                                    <div className="mb-2">
-                                      <span className="fw-semibold small text-danger">Damaged Products:</span>
-                                      <div className="ms-3 mt-1">
-                                        {order.damagedProducts.map((item, idx) => (
-                                          <div key={idx} className="small text-danger">
-                                            • {item.productName} - {item.damagedPackets || item.quantity || 0} packets
-                                          </div>
-                                        ))}
+                                <div className="row g-2 mb-3">
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center p-2 bg-light rounded">
+                                      <i className="fas fa-calendar text-primary me-3" style={{ width: '20px' }}></i>
+                                      <div>
+                                        <small className="text-muted d-block">Date</small>
+                                        <span className="fw-semibold">{new Date(order.orderDate).toLocaleDateString()}</span>
                                       </div>
                                     </div>
-                                  </>
-                                )}
-                                </div>
-                                
-                                <div className="mt-auto">
-                                  {/* First Line - Edit and Deliver */}
-                                  <div className="d-flex gap-1 mb-2">
-                                    <button className="btn btn-outline-primary btn-sm action-btn flex-fill" onClick={() => setEditingOrder(order)} title="Edit order">
-                                      <i className="fas fa-edit me-1"></i>
-                                      Edit Order
-                                    </button>
-                                    <button className="btn btn-outline-success btn-sm action-btn flex-fill" onClick={() => markAsDelivered(order)} title="Mark as delivered">
-                                      <i className="fas fa-check me-1"></i>
-                                      Deliver Order
-                                    </button>
                                   </div>
                                   
-                                  {/* Second Line - View, Print, Delete */}
-                                  <div className="d-flex gap-1">
-                                    <button className="btn btn-outline-info btn-sm action-btn" onClick={() => viewOrderDetails(order)} title="View details">
-                                      <i className="fas fa-eye"></i>
-                                    </button>
-                                    <button className="btn btn-outline-warning btn-sm action-btn" onClick={() => generateBill(order)} title="Print/Generate bill">
-                                      <i className="fas fa-print"></i>
-                                    </button>
-                                    <button className="btn btn-outline-danger btn-sm action-btn" onClick={() => deleteOrder(order._id)} title="Delete order">
-                                      <i className="fas fa-trash"></i>
-                                    </button>
+                                  <div className="col-12">
+                                    <div className="d-flex align-items-center p-2 bg-light rounded">
+                                      <i className="fas fa-boxes text-primary me-3" style={{ width: '20px' }}></i>
+                                      <div>
+                                        <small className="text-muted d-block">Items</small>
+                                        <span className="fw-semibold">{order.items?.length || 0}</span>
+                                      </div>
+                                    </div>
                                   </div>
+                                  
+                                  {order.userId && (
+                                    <div className="col-12">
+                                      <div className="d-flex align-items-center p-2 bg-light rounded">
+                                        <i className="fas fa-user text-primary me-3" style={{ width: '20px' }}></i>
+                                        <div>
+                                          <small className="text-muted d-block">Placed by</small>
+                                          <span className="fw-semibold">
+                                            {order.userId.name || order.userId.username || "Unknown"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                <div className="d-flex gap-2 flex-wrap">
+                                  <button className="btn btn-outline-info btn-sm flex-fill" onClick={() => showOrderDetails(order)}>
+                                    <i className="fas fa-eye me-1"></i>
+                                    View
+                                  </button>
+                                  <button className="btn btn-outline-primary btn-sm flex-fill" onClick={() => setEditingOrder(order)}>
+                                    <i className="fas fa-edit me-1"></i>
+                                    Edit
+                                  </button>
+                                  <button className="btn btn-outline-success btn-sm flex-fill" onClick={() => markAsDelivered(order)}>
+                                    <i className="fas fa-check me-1"></i>
+                                    Deliver
+                                  </button>
+                                  <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => showDeleteOrderModal(order)}>
+                                    <i className="fas fa-trash me-1"></i>
+                                    Delete
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -811,117 +839,86 @@ Status: ${order.status}
               {/* Delivered Orders Section */}
               {filteredDeliveredOrders.length > 0 && (
                 <div className="mb-4">
-                  <h5 className="fw-bold mb-3">
-                    <i className="fas fa-check-circle me-2"></i>
+                  <h5 className="fw-bold text-dark mb-3">
+                    <i className="fas fa-check-circle me-2 text-muted"></i>
                     Delivered Orders
                   </h5>
-                  <div className="row">
+                  <div className="row g-4">
                     {filteredDeliveredOrders.map((order) => (
-                                              <div key={order._id} className="col-lg-4 col-md-6 mb-3">
-                          <div className="card border-0 shadow-lg h-100" style={{ border: "2px solid #FFE066" }}>
-                            <div className="card-header text-white bg-primary" >
-                              <div className="d-flex align-items-center justify-content-between">
-                                <div className="d-flex align-items-center">
-                                  <div className="form-check me-2">
-                                    <input
-                                      className="form-check-input"
-                                      type="checkbox"
-                                      checked={selectedOrders.includes(order._id)}
-                                      onChange={() => toggleOrderSelection(order._id)}
-                                    />
-                                  </div>
-                                  <div className="order-status-icon-delivered">
-                                    <i className="fas fa-check fa-sm" style={{ color: "#000000" }}></i>
-                                  </div>
+                      <div key={order._id} className="col-lg-4 col-md-6 col-sm-6">
+                        <div className="card border shadow-sm h-100">
+                          <div className="card-header bg-primary text-white">
+                            <div className="d-flex align-items-center justify-content-between">
+                              <div className="d-flex align-items-center">
+                                <div className="form-check me-2">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={selectedOrders.includes(order._id)}
+                                    onChange={() => toggleOrderSelection(order._id)}
+                                  />
                                 </div>
-                                <span className="badge  px-2 py-1 text-white">Delivered</span>
-                              </div>
-                            </div>
-                            <div className="card-body d-flex flex-column p-3">
-                              <h6 className="card-title fw-bold mb-2" style={{ color: "#000000" }}>
-                                Order #{order._id.slice(-6)}
-                              </h6>
-                              <div className="mb-3">
-                                <div className="d-flex align-items-center mb-2">
-                                  <i className="fas fa-calendar me-2 order-info-icon" style={{ color: "#000000" }}></i>
-                                  <span className="fw-semibold small" style={{ color: "#000000" }}>Date:</span>
-                                  <span className="ms-2 small" style={{ color: "#000000" }}>
-                                    {new Date(order.orderDate).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                <div className="d-flex align-items-center mb-2">
-                                  <i className="fas fa-boxes me-2 order-info-icon" style={{ color: "#000000" }}></i>
-                                  <span className="fw-semibold small" style={{ color: "#000000" }}>Items:</span>
-                                  <span className="ms-2 small" style={{ color: "#000000" }}>{order.items?.length || 0}</span>
-                                </div>
-                                {order.userId && (
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-user me-2 order-info-icon" style={{ color: "#000000" }}></i>
-                                    <span className="fw-semibold small" style={{ color: "#000000" }}>Placed by:</span>
-                                    <span className="ms-2 small" style={{ color: "#000000" }}>
-                                      {order.userId.name || order.userId.username || "Unknown"}
-                                    </span>
-                                  </div>
-                                )}
-                                
-                                {/* Delivered By Information for Delivered Orders */}
-                                {order.updatedBy && (
-                                  <div className="d-flex align-items-center mb-2">
-                                    <i className="fas fa-user-check me-2 text-success"></i>
-                                    <span className="fw-semibold small text-success">Delivered by:</span>
-                                    <span className="ms-2 small text-success">
-                                      {order.updatedBy.role === 'admin' ? 'Admin' : 'Staff'}: {order.updatedBy.name}
-                                    </span>
-                                  </div>
-                                )}
-                                
-                                {/* Damaged Products Information for Delivered Orders */}
-                                {order.damagedProducts && order.damagedProducts.length > 0 && (
-                                  <>
-                                    <div className="d-flex align-items-center mb-2">
-                                      <i className="fas fa-exclamation-triangle me-2 text-danger"></i>
-                                      <span className="fw-semibold small text-danger">Total Damaged:</span>
-                                      <span className="ms-2 small text-danger fw-bold">
-                                        {order.damagedProducts.reduce((sum, item) => sum + (item.damagedPackets || item.quantity || 0), 0)} packets
-                                      </span>
-                                    </div>
-                                    <div className="mb-2">
-                                      <span className="fw-semibold small text-danger">Damaged Products:</span>
-                                      <div className="ms-3 mt-1">
-                                        {order.damagedProducts.map((item, idx) => (
-                                          <div key={idx} className="small text-danger">
-                                            • {item.productName} - {item.damagedPackets || item.quantity || 0} packets
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                              
-                              <div className="mt-auto">
-                                <div className="d-flex gap-1 mb-2">
-                                  {/* View Button - Eye Icon */}
-                                  <button className="btn btn-outline-info btn-sm action-btn" onClick={() => viewOrderDetails(order)} title="View order details">
-                                    <i className="fas fa-eye" style={{ color: "#000000" }}></i>
-                                  </button>
-                                  
-
-                                  
-                                  {/* Copy Button - Overlapping Documents Icon */}
-                                  <button className="btn btn-outline-primary btn-sm action-btn" onClick={() => copyOrderDetails(order)} title="Copy order details">
-                                    <i className="fas fa-copy" style={{ color: "#000000" }}></i>
-                                  </button>
-                                  
-                                  {/* Print Button - Printer Icon */}
-                                  <button className="btn btn-outline-warning btn-sm action-btn" onClick={() => generateBill(order)} title="Print/Generate bill">
-                                    <i className="fas fa-print" style={{ color: "#000000" }}></i>
-                                  </button>
+                                <div className="bg-white rounded-circle d-flex align-items-center justify-content-center"
+                                  style={{ width: '40px', height: '40px' }}>
+                                  <i className="fas fa-check fa-sm text-primary"></i>
                                 </div>
                               </div>
+                              <span className="badge bg-light text-dark px-2 py-1">Delivered</span>
                             </div>
                           </div>
+                          <div className="card-body">
+                            <h6 className="card-title fw-bold text-center mb-3">Order #{order._id.slice(-6)}</h6>
+                            
+                            <div className="row g-2 mb-3">
+                              <div className="col-12">
+                                <div className="d-flex align-items-center p-2 bg-light rounded">
+                                  <i className="fas fa-calendar text-success me-3" style={{ width: '20px' }}></i>
+                                  <div>
+                                    <small className="text-muted d-block">Date</small>
+                                    <span className="fw-semibold">{new Date(order.orderDate).toLocaleDateString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="col-12">
+                                <div className="d-flex align-items-center p-2 bg-light rounded">
+                                  <i className="fas fa-boxes text-success me-3" style={{ width: '20px' }}></i>
+                                  <div>
+                                    <small className="text-muted d-block">Items</small>
+                                    <span className="fw-semibold">{order.items?.length || 0}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {order.userId && (
+                                <div className="col-12">
+                                  <div className="d-flex align-items-center p-2 bg-light rounded">
+                                    <i className="fas fa-user text-success me-3" style={{ width: '20px' }}></i>
+                                    <div>
+                                      <small className="text-muted d-block">Placed by</small>
+                                      <span className="fw-semibold">
+                                        {order.userId.name || order.userId.username || "Unknown"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                                                         <div className="d-flex gap-2">
+                               <button className="btn btn-outline-info btn-sm" onClick={() => showOrderDetails(order)}>
+                                 <i className="fas fa-eye"></i>
+                               </button>
+                               <button className="btn btn-outline-warning btn-sm" onClick={() => generateBill(order)}>
+                                 <i className="fas fa-print"></i>
+                               </button>
+                               <button className="btn btn-outline-primary btn-sm" onClick={() => copyOrderDetails(order)}>
+                                 <i className="fas fa-copy"></i>
+                               </button>
+                             </div>
+                          </div>
                         </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -931,25 +928,19 @@ Status: ${order.status}
 
           {/* Table View */}
           {viewMode === 'table' && (
-            <div className="card border-0 shadow-lg">
-              <div className="card-header text-white py-2" style={{ background: "linear-gradient(135deg, #AEE9F7 0%, #8DD3C0 100%)" }}>
-                <h6 className="mb-0" style={{ color: "#000000" }}><i className="fas fa-table me-2" style={{ color: "#000000" }}></i>Orders Table View</h6>
-              </div>
+            <div className="card border shadow-sm">
               <div className="card-body p-0">
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
-                    <thead className="table-light">
+                    <thead className="table-primary">
                       <tr>
-                        <th style={{ color: "#000000" }}>Order ID</th>
-                        <th style={{ color: "#000000" }}>Date</th>
-                        <th style={{ color: "#000000" }}>Distributor</th>
-                        <th style={{ color: "#000000" }}>Status</th>
-                        <th style={{ color: "#000000" }}>Items</th>
-                        <th style={{ color: "#000000" }}>Placed By</th>
-                        <th style={{ color: "#000000" }}>Delivered By</th>
-                        <th style={{ color: "#000000" }}>Damaged Products</th>
-                        <th style={{ color: "#000000" }}>Total Damaged</th>
-                        <th style={{ color: "#000000" }}>Actions</th>
+                        <th>Order ID</th>
+                        <th>Date</th>
+                        <th>Distributor</th>
+                        <th>Status</th>
+                        <th>Items</th>
+                        <th>Placed By</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -962,105 +953,56 @@ Status: ${order.status}
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <i className="fas fa-calendar me-2" style={{ color: "#000000" }}></i>
+                              <i className="fas fa-calendar me-2 text-muted"></i>
                               {new Date(order.orderDate).toLocaleDateString()}
                             </div>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <i className="fas fa-truck me-2" style={{ color: "#000000" }}></i>
-                              {order.distributorId?.name || order.distributorId?.company || "Unknown"}
+                              <i className="fas fa-truck me-2 text-muted"></i>
+                              {order.distributorId?.distributorName || order.distributorId?.companyName || "Unknown"}
                             </div>
                           </td>
                           <td>
-                            <span className={`badge ${order.status === 'pending' ? 'bg-warning' : 'bg-success'}`} style={{ color: "#000000" }}>
-                              <i className={`fas ${order.status === 'pending' ? 'fa-clock' : 'fa-check'} me-1`} style={{ color: "#000000" }}></i>
+                            <span className={`badge ${order.status === 'pending' ? 'bg-warning' : 'bg-success'}`}>
+                              <i className={`fas ${order.status === 'pending' ? 'fa-clock' : 'fa-check'} me-1`}></i>
                               {order.status}
                             </span>
                           </td>
                           <td>
-                            <span className="badge bg-info" style={{ color: "#000000" }}>
+                            <span className="badge bg-info text-white">
                               {order.items?.length || 0}
                             </span>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <i className="fas fa-user me-2" style={{ color: "#000000" }}></i>
+                              <i className="fas fa-user me-2 text-muted"></i>
                               {order.userId?.name || order.userId?.username || "Unknown"}
                             </div>
                           </td>
                           <td>
-                            {order.status === 'delivered' && order.updatedBy ? (
-                              <div className="d-flex align-items-center">
-                                <i className="fas fa-user-check me-2 text-success"></i>
-                                <span className="text-success small">
-                                  {order.updatedBy.role === 'admin' ? 'Admin' : 'Staff'}: {order.updatedBy.name}
-                                </span>
-                              </div>
-                            ) : order.status === 'delivered' ? (
-                              <span className="text-muted small">Unknown</span>
-                            ) : (
-                              <span className="text-muted small">Not delivered</span>
-                            )}
+                            <div className="d-flex gap-1">
+                              <button className="btn btn-outline-info btn-sm" onClick={() => showOrderDetails(order)}>
+                                <i className="fas fa-eye"></i>
+                              </button>
+                              <button className="btn btn-outline-warning btn-sm" onClick={() => generateBill(order)}>
+                                <i className="fas fa-print"></i>
+                              </button>
+                              {order.status === 'pending' && (
+                                <>
+                                  <button className="btn btn-outline-primary btn-sm" onClick={() => setEditingOrder(order)}>
+                                    <i className="fas fa-edit"></i>
+                                  </button>
+                                  <button className="btn btn-outline-success btn-sm" onClick={() => markAsDelivered(order)}>
+                                    <i className="fas fa-check"></i>
+                                  </button>
+                                  <button className="btn btn-outline-danger btn-sm" onClick={() => showDeleteOrderModal(order)}>
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </td>
-                          <td>
-                            {order.damagedProducts && order.damagedProducts.length > 0 ? (
-                              <div className="damaged-products-summary">
-                                {order.damagedProducts.slice(0, 2).map((item, idx) => (
-                                  <div key={idx} className="mb-1">
-                                    <i className="fas fa-exclamation-triangle me-1 text-danger"></i>
-                                    {item.productName} - {item.damagedPackets || item.quantity || 0} pkts
-                                  </div>
-                                ))}
-                                {order.damagedProducts.length > 2 && (
-                                  <small className="text-danger">+{order.damagedProducts.length - 2} more</small>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted small">None</span>
-                            )}
-                          </td>
-                          <td>
-                            {order.damagedProducts && order.damagedProducts.length > 0 ? (
-                              <span className="badge bg-danger fs-6">
-                                {order.damagedProducts.reduce((sum, item) => sum + (item.damagedPackets || item.quantity || 0), 0)} packets
-                              </span>
-                            ) : (
-                              <span className="badge bg-secondary fs-6">0 packets</span>
-                            )}
-                          </td>
-                                                      <td>
-                              <div className="d-flex gap-1">
-                                {/* View Button - Eye Icon */}
-                                <button className="btn btn-outline-info btn-sm action-btn" onClick={() => viewOrderDetails(order)} title="View order details" style={{ color: "#000000" }}>
-                                  <i className="fas fa-eye" style={{ color: "#000000" }}></i>
-                                </button>
-                                
-
-                                
-                                {/* Copy Button - Overlapping Documents Icon */}
-                                <button className="btn btn-outline-primary btn-sm action-btn" onClick={() => copyOrderDetails(order)} title="Copy order details" style={{ color: "#000000" }}>
-                                  <i className="fas fa-copy" style={{ color: "#000000" }}></i>
-                                </button>
-                                
-                                {/* Print Button - Printer Icon */}
-                                <button className="btn btn-outline-warning btn-sm action-btn" onClick={() => generateBill(order)} title="Print/Generate bill" style={{ color: "#000000" }}>
-                                  <i className="fas fa-print" style={{ color: "#000000" }}></i>
-                                </button>
-                                
-                                {/* Status-specific Action Buttons */}
-                                {order.status === 'pending' && (
-                                  <>
-                                    <button className="btn btn-outline-success btn-sm action-btn" onClick={() => markAsDelivered(order)} title="Mark as delivered" style={{ color: "#000000" }}>
-                                      <i className="fas fa-check" style={{ color: "#000000" }}></i>
-                                    </button>
-                                    <button className="btn btn-outline-danger btn-sm action-btn" onClick={() => deleteOrder(order._id)} title="Delete order" style={{ color: "#000000" }}>
-                                      <i className="fas fa-trash" style={{ color: "#000000" }}></i>
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1089,7 +1031,6 @@ Status: ${order.status}
       {editingOrder && (
         <OrderEditModal
           order={editingOrder}
-         
           onClose={() => setEditingOrder(null)}
           onSave={(updatedOrder) => {
             setOrders(prev => prev.map(o => o._id === updatedOrder._id ? updatedOrder : o));
@@ -1098,15 +1039,38 @@ Status: ${order.status}
           }}
         />
       )}
+
+      {/* Show Order Modal */}
+      {showOrderModal && selectedOrderForView && (
+        <ShowOrderModal
+          show={showOrderModal}
+          onClose={() => {
+            setShowOrderModal(false);
+            setSelectedOrderForView(null);
+          }}
+          order={selectedOrderForView}
+        />
+      )}
+
+      {/* Delete Order Modal */}
+      {showDeleteModal && selectedOrderForDelete && (
+        <DeleteModal
+          show={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedOrderForDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Order"
+          message="Are you sure you want to delete this order?"
+          itemName={`Order #${selectedOrderForDelete._id.slice(-6)}`}
+          itemDetails={`Order for ${selectedOrderForDelete.distributorId?.companyName || selectedOrderForDelete.distributorId?.distributorName || 'Unknown Company'} - ${selectedOrderForDelete.items?.length || 0} items`}
+          confirmText="Delete Order"
+          cancelText="Cancel"
+        />
+      )}
     </div>
   );
-
-  // Return wrapped with StaffLayout if it's a staff route, otherwise return content directly
-  if (isStaffRoute) {
-    return <div className="container my-4">{content}</div>;
-  }
-  
-  return content;
 };
 
 export default OrdersHistory;

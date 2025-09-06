@@ -72,19 +72,57 @@ class ApiService {
   }
 
   // POST request
-  async post(endpoint, data) {
-    return this.request(endpoint, {
+  async post(endpoint, data, options = {}) {
+    const requestOptions = {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
+      ...options
+    };
+
+    // Handle FormData differently
+    if (data instanceof FormData) {
+      // Remove Content-Type header to let browser set it with boundary
+      const { headers, ...otherOptions } = requestOptions;
+      const { 'Content-Type': contentType, ...otherHeaders } = headers || {};
+      
+      return this.request(endpoint, {
+        ...requestOptions,
+        headers: otherHeaders,
+        body: data
+      });
+    } else {
+      // Handle JSON data
+      return this.request(endpoint, {
+        ...requestOptions,
+        body: JSON.stringify(data),
+      });
+    }
   }
 
   // PUT request
-  async put(endpoint, data) {
-    return this.request(endpoint, {
+  async put(endpoint, data, options = {}) {
+    const requestOptions = {
       method: 'PUT',
-      body: JSON.stringify(data),
-    });
+      ...options
+    };
+
+    // Handle FormData differently
+    if (data instanceof FormData) {
+      // Remove Content-Type header to let browser set it with boundary
+      const { headers, ...otherOptions } = requestOptions;
+      const { 'Content-Type': contentType, ...otherHeaders } = headers || {};
+      
+      return this.request(endpoint, {
+        ...requestOptions,
+        headers: otherHeaders,
+        body: data
+      });
+    } else {
+      // Handle JSON data
+      return this.request(endpoint, {
+        ...requestOptions,
+        body: JSON.stringify(data),
+      });
+    }
   }
 
   // DELETE request

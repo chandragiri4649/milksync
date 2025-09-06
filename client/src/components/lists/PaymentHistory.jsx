@@ -1,9 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import DeleteModal from "../DeleteModal";
 
+const PaymentHistory = ({ showAllPayments = false }) => {
+  const location = useLocation();
+  const { user } = useAuth();
+  
+  // Check if this is being accessed from staff routes
+  const isStaffRoute = location.pathname.startsWith('/staff/');
 
-const PaymentHistory = () => {
   // Helper function to get the correct image URL
   const getImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
@@ -13,7 +20,6 @@ const PaymentHistory = () => {
     return `${process.env.REACT_APP_SERVER_URL || ''}${imageUrl}`;
   };
 
-  const { token } = useAuth();
   const [distributors, setDistributors] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +32,8 @@ const PaymentHistory = () => {
   const [viewMode, setViewMode] = useState("cards");
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedPaymentForDelete, setSelectedPaymentForDelete] = useState(null);
 
   const currentDate = new Date();
   const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
@@ -50,34 +58,93 @@ const PaymentHistory = () => {
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      const paymentsData = await apiService.get('/payments');
-      if (!Array.isArray(paymentsData)) {
-        console.error("API returned non-array data:", paymentsData);
-        setPayments([]);
-        return;
-      }
+      const endpoint = showAllPayments ? "/payments/all" : "/payments";
+      const paymentsData = await apiService.get(endpoint);
       
-      setPayments(paymentsData);
-      setSelectedMonth(currentMonth);
+      // Ensure data is always an array
+      if (Array.isArray(paymentsData)) {
+        setPayments(paymentsData);
+        setSelectedMonth(currentMonth);
+      } else if (paymentsData && typeof paymentsData === 'object') {
+        if (paymentsData.error) {
+          setMessage(paymentsData.error);
+          setPayments([]);
+        } else {
+          setPayments([]);
+          setMessage("Unexpected response format from payments API");
+        }
+      } else {
+        setPayments([]);
+        setMessage("No payments data received");
+      }
     } catch (err) {
       console.error("Error fetching payments:", err);
+      setMessage(err.message || "Failed to fetch payments.");
       setPayments([]);
-      setMessage("Failed to fetch payments.");
     } finally {
       setLoading(false);
     }
-  }, [currentMonth]);
+  }, [currentMonth, showAllPayments]);
 
   useEffect(() => {
     fetchDistributors();
     fetchPayments();
   }, [fetchDistributors, fetchPayments]);
 
+  // Safety check - ensure payments is always an array
+  const safePayments = Array.isArray(payments) ? payments : [];
+
+  // Bulk actions functionality
+  const [selectedPayments, setSelectedPayments] = useState([]);
+
+  const togglePaymentSelection = (paymentId) => {
+    setSelectedPayments(prev => 
+      prev.includes(paymentId) 
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+  const selectAllPayments = () => {
+    const filteredPayments = getFilteredPayments();
+    if (selectedPayments.length === filteredPayments.length) {
+      setSelectedPayments([]);
+    } else {
+      setSelectedPayments(filteredPayments.map(payment => payment._id));
+    }
+  };
+
+  const bulkDeletePayments = async () => {
+    if (selectedPayments.length === 0) {
+      setMessage("Please select payments to delete");
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedPayments.length} payments? This action cannot be undone.`)) return;
+
+    try {
+      const promises = selectedPayments.map(paymentId => 
+        apiService.delete(`/payments/${paymentId}`)
+      );
+
+      await Promise.all(promises);
+      setPayments(prev => prev.filter(payment => !selectedPayments.includes(payment._id)));
+      setSelectedPayments([]);
+      setMessage(`${selectedPayments.length} payments deleted successfully!`);
+    } catch (err) {
+      setMessage("Failed to delete some payments");
+    }
+  };
+
   const getFilteredPayments = () => {
-    let filtered = payments;
+    let filtered = safePayments;
     
     if (selectedDistributor) {
-      filtered = filtered.filter(payment => payment.distributorId?._id === selectedDistributor);
+      filtered = filtered.filter(payment => 
+        payment.distributorId?._id === selectedDistributor ||
+        payment.distributorId?.distributorName === selectedDistributor ||
+        payment.distributorId?.companyName === selectedDistributor
+      );
     }
 
     if (selectedMonth) {
@@ -104,10 +171,11 @@ const PaymentHistory = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(payment => 
-        payment.distributorId?.distributorName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.distributorId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        payment.createdBy?.username?.toLowerCase().includes(searchTerm.toLowerCase())
+        (payment.distributorId?.distributorName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment.distributorId?.companyName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment._id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment.createdBy?.username || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (payment.paymentMethod || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
     
@@ -149,17 +217,17 @@ const PaymentHistory = () => {
   };
 
   const exportToCSV = () => {
-    const filteredPayments = getFilteredPayments();
-    if (filteredPayments.length === 0) {
+    const paymentsToExport = getFilteredPayments();
+    if (paymentsToExport.length === 0) {
       setMessage("No payments to export");
       return;
     }
 
     const csvContent = [
       ["Payment ID", "Distributor", "Payment Date", "Amount", "Payment Method", "Recorded By", "Receipt URL"],
-      ...filteredPayments.map(payment => [
+      ...paymentsToExport.map(payment => [
         payment._id.slice(-6).toUpperCase(),
-        payment.distributorId?.distributorName || payment.distributorId?.name || "N/A",
+        payment.distributorId?.distributorName || payment.distributorId?.companyName || "N/A",
         new Date(payment.paymentDate).toLocaleDateString(),
         `₹${payment.amount.toFixed(2)}`,
         payment.paymentMethod || "N/A",
@@ -178,12 +246,68 @@ const PaymentHistory = () => {
     setMessage("Payments exported successfully!");
   };
 
-  const summaryStats = getFilteredPayments().reduce((acc, payment) => {
-    acc.totalAmount += payment.amount || 0;
-    acc.totalPayments += 1;
-    acc.methodStats[payment.paymentMethod] = (acc.methodStats[payment.paymentMethod] || 0) + 1;
-    return acc;
-  }, { totalAmount: 0, totalPayments: 0, methodStats: {} });
+  // Calculate summary statistics
+  const getSummaryStats = () => {
+    const filteredPayments = getFilteredPayments();
+    const totalPayments = filteredPayments.length;
+    const totalAmount = filteredPayments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    
+    // Calculate payment method statistics
+    const methodStats = filteredPayments.reduce((acc, payment) => {
+      const method = payment.paymentMethod || 'Unknown';
+      acc[method] = (acc[method] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const digitalPayments = (methodStats["PhonePe"] || 0) + (methodStats["Google Pay"] || 0);
+    const bankTransfers = (methodStats["Bank Transfer"] || 0) + (methodStats["Net Banking"] || 0);
+    const cashPayments = methodStats["Cash"] || 0;
+    const receiptsWithImages = filteredPayments.filter(payment => getImageUrl(payment.receiptImageUrl)).length;
+    
+    return { 
+      totalPayments, 
+      totalAmount, 
+      digitalPayments, 
+      bankTransfers, 
+      cashPayments, 
+      receiptsWithImages 
+    };
+  };
+
+  const summaryStats = getSummaryStats();
+
+  // Delete a payment
+  const deletePayment = async (id) => {
+    if (!window.confirm("Delete this payment?")) return;
+    try {
+      await apiService.delete(`/payments/${id}`);
+      setPayments(prev => prev.filter(p => p._id !== id));
+      setMessage("Payment deleted successfully");
+    } catch (error) {
+      setMessage(error.message || "Failed to delete payment");
+    }
+  };
+
+  // Show delete payment modal
+  const showDeletePaymentModal = (payment) => {
+    setSelectedPaymentForDelete(payment);
+    setShowDeleteModal(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (!selectedPaymentForDelete) return;
+    
+    try {
+      await apiService.delete(`/payments/${selectedPaymentForDelete._id}`);
+      setPayments(prev => prev.filter(p => p._id !== selectedPaymentForDelete._id));
+      setMessage("Payment deleted successfully");
+      setShowDeleteModal(false);
+      setSelectedPaymentForDelete(null);
+    } catch (error) {
+      setMessage(error.message || "Failed to delete payment");
+    }
+  };
 
   if (loading) {
     return (
@@ -199,15 +323,22 @@ const PaymentHistory = () => {
   return (
     <div className="container-fluid py-4">
       {/* Page Header */}
-      <div className="row mb-3">
+      <div className="row mb-4">
         <div className="col-12">
           <div className="d-flex align-items-center">
-                         <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style={{width: '50px', height: '50px'}}>
-               <i className="fas fa-credit-card fa-md text-white"></i>
-             </div>
+            <div 
+              className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+              style={{width: '60px', height: '60px'}}
+            >
+              <i className="fas fa-credit-card fa-lg text-white"></i>
+            </div>
             <div>
-              <h3 className="mb-0 fw-bold text-black">Payment History</h3>
-              <p className="text-muted mb-0 small">View and manage all payment records</p>
+              <h3 className="mb-0 fw-bold text-dark">
+                {showAllPayments ? "All Payments History" : "My Payments History"}
+              </h3>
+              <p className="mb-0 text-muted">
+                {showAllPayments ? "View and manage all system payments" : "Track your payment history and status"}
+              </p>
             </div>
           </div>
         </div>
@@ -222,147 +353,251 @@ const PaymentHistory = () => {
         </div>
       )}
 
-      {/* Summary Cards */}
+      {/* Summary Dashboard */}
       <div className="row mb-4">
-        <div className="col-md-3 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-primary text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-credit-card me-2"></i>Total Payments</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-info">{summaryStats.totalPayments}</h3>
-              <p className="mb-0 text-muted">All payments</p>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-success text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-rupee-sign me-2"></i>Total Amount</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-success">₹{summaryStats.totalAmount.toFixed(2)}</h3>
-              <p className="mb-0 text-muted">Combined value</p>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-primary">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-credit-card text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Payments</h6>
+                  <h4 className="mb-0 fw-bold text-primary">{summaryStats.totalPayments}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="col-md-3 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-warning text-dark border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-mobile-alt me-2"></i>Digital Payments</h6>
-            </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-warning">
-                {(summaryStats.methodStats["PhonePe"] || 0) + (summaryStats.methodStats["Google Pay"] || 0)}
-              </h3>
-              <p className="mb-0 text-muted">PhonePe + GPay</p>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-success">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-rupee-sign text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Amount</h6>
+                  <h4 className="mb-0 fw-bold text-success">₹{summaryStats.totalAmount.toFixed(2)}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="col-md-3 mb-3">
-          <div className="card border shadow-sm h-100">
-            <div className="card-header bg-danger text-white border-0 py-2">
-              <h6 className="mb-0"><i className="fas fa-university me-2"></i>Bank Transfers</h6>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-warning">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-mobile-alt text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Digital Payments</h6>
+                  <h4 className="mb-0 fw-bold text-warning">{summaryStats.digitalPayments}</h4>
+                </div>
+              </div>
             </div>
-            <div className="card-body text-center">
-              <h3 className="fw-bold text-danger">
-                {(summaryStats.methodStats["Bank Transfer"] || 0) + (summaryStats.methodStats["Net Banking"] || 0)}
-              </h3>
-              <p className="mb-0 text-muted">Bank + Net Banking</p>
+          </div>
+        </div>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-info">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-university text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Bank Transfers</h6>
+                  <h4 className="mb-0 fw-bold text-info">{summaryStats.bankTransfers}</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-secondary">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-money-bill text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Cash Payments</h6>
+                  <h4 className="mb-0 fw-bold text-secondary">{summaryStats.cashPayments}</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-2 col-md-4 mb-3">
+          <div className="card border shadow-sm h-100 border-top border-4 border-danger">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-receipt text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">With Receipts</h6>
+                  <h4 className="mb-0 fw-bold text-danger">{summaryStats.receiptsWithImages}</h4>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="card border shadow-sm mb-4">
-        <div className="card-header bg-secondary text-white py-2">
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0"><i className="fas fa-search me-2"></i>Search & Filter Payments</h6>
-            <div className="d-flex gap-2">
-              <button className={`btn btn-sm ${viewMode === 'cards' ? 'btn-light' : 'btn-outline-light'}`} onClick={() => setViewMode('cards')}>
-                <i className="fas fa-th-large me-1"></i>Cards
-              </button>
-              <button className={`btn btn-sm ${viewMode === 'table' ? 'btn-light' : 'btn-outline-light'}`} onClick={() => setViewMode('table')}>
-                <i className="fas fa-table me-1"></i>Table
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="card-body p-3">
-          <div className="row g-3">
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-search me-1"></i>Search
-              </label>
-              <input type="text" className="form-control form-control-sm" placeholder="Search payments..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-truck me-1"></i>Distributor
-              </label>
-              <select className="form-select form-select-sm" value={selectedDistributor} onChange={(e) => setSelectedDistributor(e.target.value)}>
-                <option value="">All Distributors</option>
-                {distributors.map(dist => (
-                  <option key={dist._id} value={dist._id}>
-                    {dist.distributorName || dist.name || dist.company}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-calendar me-1"></i>Month
-              </label>
-              <select className="form-select form-select-sm" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-                <option value="">All Months</option>
-                {getMonthOptions().map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-calendar-year me-1"></i>Year
-              </label>
-              <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-                {getYearOptions().map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2">
-              <label className="form-label fw-bold small">
-                <i className="fas fa-credit-card me-1"></i>Method
-              </label>
-              <select className="form-select form-select-sm" value={selectedPaymentMethod} onChange={(e) => setSelectedPaymentMethod(e.target.value)}>
-                <option value="">All Methods</option>
-                {paymentMethods.map(method => (
-                  <option key={method} value={method}>{method}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-md-2 d-flex align-items-end gap-2">
-                             <button className="btn btn-sm btn-outline-info flex-fill" onClick={() => { setSelectedDistributor(""); setSelectedMonth(""); setSelectedYear(new Date().getFullYear().toString()); setSelectedPaymentMethod(""); setSearchTerm(""); }}>
-                 <i className="fas fa-refresh me-1"></i>Clear
-               </button>
-               <button className="btn btn-sm btn-success flex-fill" onClick={exportToCSV}>
-                 <i className="fas fa-download me-1"></i>Export
-               </button>
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card border shadow-sm">
+            <div className="card-body">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="position-relative">
+                    <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                    <input
+                      type="text"
+                      className="form-control ps-5"
+                      placeholder="Search payments, distributors..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '250px' }}
+                    />
+                  </div>
+                  <select
+                    className="form-select"
+                    value={selectedDistributor}
+                    onChange={(e) => setSelectedDistributor(e.target.value)}
+                    style={{ width: '180px' }}
+                  >
+                    <option value="">All Distributors</option>
+                    {distributors.map(dist => (
+                      <option key={dist._id} value={dist.companyName || dist.distributorName}>
+                        {dist.companyName || dist.distributorName}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    style={{ width: '150px' }}
+                  >
+                    <option value="">All Months</option>
+                    {getMonthOptions().map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    style={{ width: '120px' }}
+                  >
+                    {getYearOptions().map(option => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="form-select"
+                    value={selectedPaymentMethod}
+                    onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                    style={{ width: '140px' }}
+                  >
+                    <option value="">All Methods</option>
+                    {paymentMethods.map(method => (
+                      <option key={method} value={method}>{method}</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-outline-primary" onClick={exportToCSV}>
+                    <i className="fas fa-download me-2"></i>
+                    Export
+                  </button>
+                </div>
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="fas fa-th-large me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="fas fa-table me-2"></i>
+                    Table
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Bulk Actions */}
+      {getFilteredPayments().length > 0 && (
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card border shadow-sm">
+              <div className="card-body">
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="form-check">
+                      <input
+                        className="form-check-input"
+                        type="checkbox"
+                        id="selectAllPayments"
+                        checked={selectedPayments.length === getFilteredPayments().length && getFilteredPayments().length > 0}
+                        onChange={selectAllPayments}
+                      />
+                      <label className="form-check-label" htmlFor="selectAllPayments">
+                        Select All ({selectedPayments.length}/{getFilteredPayments().length})
+                      </label>
+                    </div>
+                  </div>
+                  <div className="d-flex gap-2">
+                    <button 
+                      className="btn btn-danger btn-sm" 
+                      onClick={bulkDeletePayments}
+                      disabled={selectedPayments.length === 0}
+                    >
+                      <i className="fas fa-trash me-1"></i>
+                      Delete ({selectedPayments.length})
+                    </button>
+                    <button 
+                      className="btn btn-secondary btn-sm" 
+                      onClick={() => setSelectedPayments([])}
+                      disabled={selectedPayments.length === 0}
+                    >
+                      <i className="fas fa-times me-1"></i>
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payments Display */}
       {getFilteredPayments().length === 0 ? (
         <div className="text-center py-5">
-          <div className="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{ width: '80px', height: '80px' }}>
-            <i className="fas fa-credit-card fa-2x text-muted"></i>
-          </div>
-          <h5 className="text-muted">No Payments Found</h5>
+          <i className="fas fa-credit-card fa-3x text-muted mb-3"></i>
+          <h6 className="text-muted">No Payments Found</h6>
           <p className="text-muted">
-            {payments.length === 0 ? "No payments have been recorded yet" : "No payments match your search criteria"}
+            {safePayments.length === 0 ? "No payments are currently available" : "No payments match your search criteria"}
           </p>
         </div>
       ) : (
@@ -375,43 +610,85 @@ const PaymentHistory = () => {
                   <div className="card border shadow-sm h-100">
                     <div className="card-header bg-primary text-white">
                       <div className="d-flex justify-content-between align-items-center">
-                                                 <h6 className="mb-0"><i className="fas fa-credit-card me-2"></i>Payment #{payment._id.slice(-6).toUpperCase()}</h6>
+                        <div className="d-flex align-items-center">
+                          <div className="form-check me-2">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={selectedPayments.includes(payment._id)}
+                              onChange={() => togglePaymentSelection(payment._id)}
+                            />
+                          </div>
+                          <div className="bg-white rounded-circle d-flex align-items-center justify-content-center"
+                            style={{ width: '40px', height: '40px' }}>
+                            <i className="fas fa-credit-card fa-sm text-primary"></i>
+                          </div>
+                        </div>
                         <span className="badge bg-light text-dark px-2 py-1">{payment.paymentMethod}</span>
                       </div>
                     </div>
                     <div className="card-body d-flex flex-column">
-                      <div className="mb-3">
-                                                 <div className="d-flex align-items-center mb-2">
-                           <i className="fas fa-building me-2 text-muted" style={{width: '16px'}}></i>
-                           <span className="fw-semibold small text-muted">Distributor:</span>
-                           <span className="ms-2 small">{payment.distributorId?.distributorName || payment.distributorId?.name || "N/A"}</span>
-                         </div>
-                                                 <div className="d-flex align-items-center mb-2">
-                           <i className="fas fa-calendar me-2 text-muted" style={{width: '16px'}}></i>
-                           <span className="fw-semibold small text-muted">Payment Date:</span>
-                           <span className="ms-2 small">{new Date(payment.paymentDate).toLocaleDateString()}</span>
-                         </div>
-                                                 <div className="d-flex align-items-center mb-2">
-                           <i className="fas fa-user me-2 text-muted" style={{width: '16px'}}></i>
-                           <span className="fw-semibold small text-muted">Recorded By:</span>
-                           <span className="ms-2 small">{payment.createdBy?.username || "N/A"}</span>
-                         </div>
+                      <h6 className="card-title fw-bold text-center mb-3">Payment #{payment._id.slice(-6)}</h6>
+                      
+                      <div className="row g-2 mb-3">
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-building text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Distributor</small>
+                              <span className="fw-semibold">{payment.distributorId?.distributorName || payment.distributorId?.companyName || "N/A"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-calendar text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Payment Date</small>
+                              <span className="fw-semibold">{new Date(payment.paymentDate).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-user text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Recorded By</small>
+                              <span className="fw-semibold">{payment.createdBy?.username || "N/A"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-credit-card text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Method</small>
+                              <span className="fw-semibold">{payment.paymentMethod || "N/A"}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       
                       <div className="mt-auto">
-                                                 <div className="d-flex justify-content-between align-items-center mb-3">
-                           <span className="small text-muted">Amount</span>
-                           <h4 className="fw-bold mb-0 text-success">₹{payment.amount.toFixed(2)}</h4>
-                         </div>
-                        <div className="d-flex gap-2">
-                                                     {getImageUrl(payment.receiptImageUrl) && (
-                             <a href={getImageUrl(payment.receiptImageUrl)} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm flex-fill" title="View receipt">
-                               <i className="fas fa-receipt me-1"></i>Receipt
-                             </a>
-                           )}
-                                                       <button className="btn btn-outline-info btn-sm flex-fill" title="View payment details" onClick={() => viewPaymentDetails(payment)}>
-                              <i className="fas fa-eye me-1"></i>Details
-                            </button>
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                          <span className="small text-muted">Amount</span>
+                          <h4 className="fw-bold mb-0 text-success">₹{payment.amount.toFixed(2)}</h4>
+                        </div>
+                        <div className="d-flex gap-2 flex-wrap">
+                          {getImageUrl(payment.receiptImageUrl) && (
+                            <a href={getImageUrl(payment.receiptImageUrl)} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm flex-fill" title="View receipt">
+                              <i className="fas fa-receipt me-1"></i>Receipt
+                            </a>
+                          )}
+                          <button className="btn btn-outline-info btn-sm flex-fill" title="View payment details" onClick={() => viewPaymentDetails(payment)}>
+                            <i className="fas fa-eye me-1"></i>Details
+                          </button>
+                          <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => showDeletePaymentModal(payment)}>
+                            <i className="fas fa-trash me-1"></i>Delete
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -427,13 +704,10 @@ const PaymentHistory = () => {
           {/* Table View */}
           {viewMode === 'table' && (
             <div className="card border shadow-sm">
-              <div className="card-header bg-info text-white py-2">
-                <h6 className="mb-0"><i className="fas fa-table me-2"></i>Payments Table View</h6>
-              </div>
               <div className="card-body p-0">
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
-                    <thead className="table-light">
+                    <thead className="table-primary">
                       <tr>
                         <th>Payment ID</th>
                         <th>Distributor</th>
@@ -449,35 +723,36 @@ const PaymentHistory = () => {
                       {getFilteredPayments().map(payment => (
                         <tr key={payment._id}>
                           <td>
-                            <div className="d-flex align-items-center">
-                              <i className="fas fa-credit-card me-2 text-muted"></i>
+                            <span className="badge bg-secondary text-white">
                               #{payment._id.slice(-6).toUpperCase()}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <i className="fas fa-building me-2 text-muted"></i>
+                              {payment.distributorId?.distributorName || payment.distributorId?.companyName || "Unknown"}
                             </div>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                                                             <i className="fas fa-building me-2 text-muted"></i>
-                              {payment.distributorId?.distributorName || payment.distributorId?.name || "Unknown"}
-                            </div>
-                          </td>
-                          <td>
-                            <div className="d-flex align-items-center">
-                                                             <i className="fas fa-calendar me-2 text-muted"></i>
+                              <i className="fas fa-calendar me-2 text-muted"></i>
                               {new Date(payment.paymentDate).toLocaleDateString()}
                             </div>
                           </td>
                           <td>
-                            <span className="badge bg-success fs-6">₹{payment.amount.toFixed(2)}</span>
+                            <span className="badge bg-success text-white">
+                              ₹{payment.amount.toFixed(2)}
+                            </span>
                           </td>
                           <td>
                             <span className="badge bg-info text-dark">
-                                                             <i className="fas fa-credit-card me-1"></i>
+                              <i className="fas fa-credit-card me-1"></i>
                               {payment.paymentMethod}
                             </span>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                                                             <i className="fas fa-user me-2 text-muted"></i>
+                              <i className="fas fa-user me-2 text-muted"></i>
                               {payment.createdBy?.username || "N/A"}
                             </div>
                           </td>
@@ -487,17 +762,20 @@ const PaymentHistory = () => {
                                 <i className="fas fa-receipt"></i>
                               </a>
                             ) : (
-                                                             <span className="text-muted">No receipt</span>
+                              <span className="text-muted">No receipt</span>
                             )}
                           </td>
                           <td>
                             <div className="d-flex gap-1">
-                                                             <button className="btn btn-outline-info btn-sm" title="View payment details" onClick={() => viewPaymentDetails(payment)}>
-                                 <i className="fas fa-eye" style={{ color: "#000000" }}></i>
-                               </button>
-                               <button className="btn btn-outline-warning btn-sm" title="Edit payment">
-                                 <i className="fas fa-edit" style={{ color: "#000000" }}></i>
-                               </button>
+                              <button className="btn btn-outline-info btn-sm" onClick={() => viewPaymentDetails(payment)}>
+                                <i className="fas fa-eye"></i>
+                              </button>
+                              <button className="btn btn-outline-warning btn-sm">
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button className="btn btn-outline-danger btn-sm" onClick={() => showDeletePaymentModal(payment)}>
+                                <i className="fas fa-trash"></i>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -507,7 +785,7 @@ const PaymentHistory = () => {
                 </div>
               </div>
             </div>
-                     )}
+          )}
          </>
        )}
 
@@ -530,7 +808,7 @@ const PaymentHistory = () => {
                        <i className="fas fa-building me-3" style={{ color: "#000000", fontSize: '1.2rem' }}></i>
                        <div>
                          <small className="text-muted d-block">Distributor</small>
-                         <strong style={{ color: "#000000" }}>{selectedPayment.distributorId?.distributorName || selectedPayment.distributorId?.name || "N/A"}</strong>
+                         <strong style={{ color: "#000000" }}>{selectedPayment.distributorId?.distributorName || selectedPayment.distributorId?.companyName || "N/A"}</strong>
                        </div>
                      </div>
                      <div className="d-flex align-items-center mb-3">
@@ -661,8 +939,25 @@ const PaymentHistory = () => {
            </div>
          </div>
        )}
-     </div>
-   );
- };
+           {/* Delete Payment Modal */}
+      {showDeleteModal && selectedPaymentForDelete && (
+        <DeleteModal
+          show={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setSelectedPaymentForDelete(null);
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Payment"
+          message="Are you sure you want to delete this payment?"
+          itemName={`Payment #${selectedPaymentForDelete._id.slice(-6)}`}
+          itemDetails={`Payment for ${selectedPaymentForDelete.distributorId?.companyName || selectedPaymentForDelete.distributorId?.distributorName || 'Unknown Company'} - ₹${selectedPaymentForDelete.amount?.toFixed(2) || '0.00'} via ${selectedPaymentForDelete.paymentMethod}`}
+          confirmText="Delete Payment"
+          cancelText="Cancel"
+        />
+      )}
+    </div>
+  );
+};
 
 export default PaymentHistory;

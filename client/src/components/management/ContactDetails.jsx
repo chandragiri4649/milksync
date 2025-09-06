@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import apiService from '../utils/apiService';
+import React, { useState, useEffect, useCallback } from 'react';
+import apiService from '../../utils/apiService';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ContactDetails = () => {
-  const { token } = useAuth();
   const [formData, setFormData] = useState({
     adminName: '',
     adminContact: '',
@@ -14,27 +14,28 @@ const ContactDetails = () => {
   });
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [viewMode, setViewMode] = useState('table');
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
-
-  const fetchContacts = async () => {
+  // Fetch contacts on component mount
+  const fetchContacts = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiService.get('/admin/contact-details');
       setContacts(data);
     } catch (err) {
-      setError('Failed to fetch contact details: ' + err.message);
+      toast.error('Failed to fetch contact details: ' + err.message);
+      console.error('Fetch contacts error:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -46,17 +47,16 @@ const ContactDetails = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     try {
       setLoading(true);
-      setError('');
-      setSuccess('');
 
       if (editingId) {
         await apiService.put(`/admin/contact-details/${editingId}`, formData);
-        setSuccess('Contact details updated successfully!');
+        toast.success('Contact details updated successfully!');
       } else {
         await apiService.post('/admin/contact-details', formData);
-        setSuccess('Contact details saved successfully!');
+        toast.success('Contact details saved successfully!');
       }
 
       setFormData({
@@ -70,7 +70,8 @@ const ContactDetails = () => {
       setEditingId(null);
       fetchContacts();
     } catch (err) {
-      setError('Failed to save contact details: ' + err.message);
+      toast.error('Failed to save contact details: ' + err.message);
+      console.error('Save contact details error:', err);
     } finally {
       setLoading(false);
     }
@@ -86,30 +87,19 @@ const ContactDetails = () => {
       staffContact: contact.staffContact || ''
     });
     setEditingId(contact._id);
-    setError('');
-    setSuccess('');
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this contact detail?')) {
       try {
         setLoading(true);
-        const response = await fetch(`${config.API_BASE}/admin/contact-details/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to delete contact details');
-        }
-
-        setSuccess('Contact details deleted successfully!');
+        
+        await apiService.delete(`/admin/contact-details/${id}`);
+        toast.success('Contact details deleted successfully!');
         fetchContacts();
       } catch (err) {
-        setError('Failed to delete contact details: ' + err.message);
+        toast.error('Failed to delete contact details: ' + err.message);
+        console.error('Delete contact details error:', err);
       } finally {
         setLoading(false);
       }
@@ -126,8 +116,6 @@ const ContactDetails = () => {
       staffContact: ''
     });
     setEditingId(null);
-    setError('');
-    setSuccess('');
   };
 
   // Filter contacts based on search term and filter type
@@ -170,7 +158,7 @@ const ContactDetails = () => {
   const exportToCSV = () => {
     const filteredContacts = getFilteredContacts();
     if (filteredContacts.length === 0) {
-      setError('No contacts to export');
+      toast.warning('No contacts to export');
       return;
     }
 
@@ -195,7 +183,7 @@ const ContactDetails = () => {
     a.download = `contact_details_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setSuccess('Contacts exported successfully!');
+    toast.success('Contacts exported successfully!');
   };
 
   return (
@@ -228,83 +216,77 @@ const ContactDetails = () => {
       <div className="row mb-4">
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-primary">
-            <div className="card-body text-center">
-              <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                <i className="bi bi-person-lines-fill text-white"></i>
-              </div>
-              <div>
-                <h4 className="fw-bold text-primary mb-1">{getFilteredContacts().length}</h4>
-                <p className="mb-0 text-muted">Total Contacts</p>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="bi bi-person-lines-fill text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Contacts</h6>
+                  <h4 className="mb-0 fw-bold text-primary">{getFilteredContacts().length}</h4>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-success">
-            <div className="card-body text-center">
-              <div className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                <i className="bi bi-person-badge text-white"></i>
-              </div>
-              <div>
-                <h4 className="fw-bold text-success mb-1">{getFilteredContacts().filter(c => c.adminName).length}</h4>
-                <p className="mb-0 text-muted">Admin Contacts</p>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="bi bi-person-badge text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Admin Contacts</h6>
+                  <h4 className="mb-0 fw-bold text-success">{getFilteredContacts().filter(c => c.adminName).length}</h4>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-info">
-            <div className="card-body text-center">
-              <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                <i className="bi bi-people text-white"></i>
-              </div>
-              <div>
-                <h4 className="fw-bold text-info mb-1">{getFilteredContacts().filter(c => c.staffName).length}</h4>
-                <p className="mb-0 text-muted">Staff Contacts</p>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="bi bi-people text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Staff Contacts</h6>
+                  <h4 className="mb-0 fw-bold text-info">{getFilteredContacts().filter(c => c.staffName).length}</h4>
+                </div>
               </div>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-warning">
-            <div className="card-body text-center">
-              <div className="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                <i className="bi bi-envelope text-white"></i>
-              </div>
-              <div>
-                <h4 className="fw-bold text-warning mb-1">{getFilteredContacts().filter(c => c.adminEmail).length}</h4>
-                <p className="mb-0 text-muted">Email Contacts</p>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="bi bi-envelope text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Email Contacts</h6>
+                  <h4 className="mb-0 fw-bold text-warning">{getFilteredContacts().filter(c => c.adminEmail).length}</h4>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Success Alert */}
-      {success && (
-        <div className="alert alert-success alert-dismissible fade show" role="alert">
-          <i className="bi bi-check-circle me-2"></i>
-          {success}
-          <button type="button" className="btn-close" onClick={() => setSuccess('')}></button>
-        </div>
-      )}
-
-      {/* Error Alert */}
-      {error && (
-        <div className="alert alert-danger alert-dismissible fade show" role="alert">
-          <i className="bi bi-exclamation-triangle me-2"></i>
-          {error}
-          <button type="button" className="btn-close" onClick={() => setError('')}></button>
-        </div>
-      )}
-
       {/* Search and Filter Controls */}
       <div className="row mb-4">
         <div className="col-12">
           <div className="card border shadow-sm">
             <div className="card-body">
-              <div className="row g-3">
-                <div className="col-lg-5 col-md-6">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
                   <div className="position-relative">
                     <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input
@@ -313,25 +295,44 @@ const ContactDetails = () => {
                       placeholder="Search contacts..."
                       value={searchTerm || ''}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '200px' }}
                     />
                   </div>
-                </div>
-                <div className="col-lg-4 col-md-6">
                   <select
                     className="form-select"
                     value={filterType || ''}
                     onChange={(e) => setFilterType(e.target.value)}
+                    style={{ width: '150px' }}
                   >
                     <option value="">All Types</option>
                     <option value="admin">Admin Only</option>
                     <option value="staff">Staff Only</option>
                     <option value="email">With Email</option>
                   </select>
+                  <button className="btn btn-outline-secondary" onClick={() => {
+                    setSearchTerm("");
+                    setFilterType("");
+                  }}>
+                    <i className="bi bi-refresh me-2"></i>
+                    Clear
+                  </button>
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <button className="btn btn-outline-success w-100" onClick={exportToCSV}>
-                    <i className="bi bi-download me-2"></i>
-                    Export
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="bi bi-grid me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="bi bi-table me-2"></i>
+                    Table
                   </button>
                 </div>
               </div>
@@ -577,9 +578,22 @@ const ContactDetails = () => {
           )}
         </div>
       </div>
+      
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 };
 
 export default ContactDetails;
-

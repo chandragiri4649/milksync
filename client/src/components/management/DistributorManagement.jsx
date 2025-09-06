@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import DeleteModal from "../DeleteModal";
 
 const DistributorManagement = () => {
   const [distributors, setDistributors] = useState([]);
@@ -30,8 +32,12 @@ const DistributorManagement = () => {
   const [editPassword, setEditPassword] = useState("");
   const [editStatus, setEditStatus] = useState("");
 
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [distributorToDelete, setDistributorToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const [message, setMessage] = useState("");
-  const { token } = useAuth();
 
   const statuses = ["active", "inactive", "pending"];
 
@@ -41,7 +47,7 @@ const DistributorManagement = () => {
       const data = await apiService.get('/admin/distributors');
       setDistributors(data);
     } catch {
-      setMessage("Failed to fetch distributors.");
+      toast.error("Failed to fetch distributors.");
     }
   }, []);
 
@@ -61,7 +67,7 @@ const DistributorManagement = () => {
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(dist => 
-        (dist.distributorName || dist.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (dist.distributorName || dist.companyName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dist.username || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dist.contact || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         (dist.status || "").toLowerCase().includes(searchTerm.toLowerCase())
@@ -75,14 +81,14 @@ const DistributorManagement = () => {
   const exportToCSV = () => {
     const filteredDistributors = getFilteredDistributors();
     if (filteredDistributors.length === 0) {
-      setMessage("No distributors to export");
+      toast.warning("No distributors to export");
       return;
     }
 
     const csvContent = [
       ["Company Name", "Distributor Name", "Username", "Contact", "Status"],
       ...filteredDistributors.map(dist => [
-        dist.name || "N/A",
+        dist.companyName || "N/A",
         dist.distributorName || "N/A",
         dist.username || "N/A",
         dist.contact || "N/A",
@@ -97,7 +103,7 @@ const DistributorManagement = () => {
     a.download = `distributors_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setMessage("Distributors list exported successfully!");
+    toast.success("Distributors list exported successfully!");
   };
 
   // Calculate summary statistics
@@ -118,49 +124,34 @@ const DistributorManagement = () => {
     setMessage("");
 
     if (!distributorName.trim() || !companyName.trim() || !username.trim() || !password) {
-      setMessage("Distributor name, company name, username, and password are required.");
+      toast.error("Distributor name, company name, username, and password are required.");
       return;
     }
 
     try {
-      const res = await fetch(`${config.API_BASE}/admin/distributors`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          distributorName,
-          name: companyName,
-          contact,
-          username,
-          password,
-        }),
+      const response = await apiService.post('/admin/distributors', {
+        distributorName,
+        companyName,
+        contact,
+        username,
+        password,
       });
 
-      if (res.ok) {
-        setMessage("Distributor added successfully.");
-        // Clear form
-        setDistributorName("");
-        setCompanyName("");
-        setContact("");
-        setUsername("");
-        setPassword("");
-        setShowAddForm(false);
-        if (showEditForm) {
-          resetEditForm();
-        }
-        fetchDistributors();
-      } else {
-        let errorText = "Failed to add distributor.";
-        try {
-          const errData = await res.json();
-          if (errData.message) errorText = errData.message;
-        } catch { }
-        setMessage(errorText);
+      toast.success("Distributor added successfully!");
+      // Clear form
+      setDistributorName("");
+      setCompanyName("");
+      setContact("");
+      setUsername("");
+      setPassword("");
+      setShowAddForm(false);
+      if (showEditForm) {
+        resetEditForm();
       }
-    } catch {
-      setMessage("Server error when adding distributor.");
+      fetchDistributors();
+    } catch (err) {
+      toast.error(err.message || "Failed to add distributor.");
+      console.error("Add distributor error:", err);
     }
   };
 
@@ -168,19 +159,45 @@ const DistributorManagement = () => {
   const deleteDistributor = async (id) => {
     if (!window.confirm("Are you sure to delete this distributor?")) return;
     try {
-      const res = await fetch(`${config.API_BASE}/admin/distributors/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setMessage("Distributor deleted successfully.");
-        fetchDistributors();
-      } else {
-        setMessage("Failed to delete distributor.");
-      }
-    } catch {
-      setMessage("Server error when deleting distributor.");
+      await apiService.delete(`/admin/distributors/${id}`);
+
+      setMessage("Distributor deleted successfully.");
+      fetchDistributors();
+    } catch (err) {
+      setMessage(err.message || "Failed to delete distributor.");
+      console.error("Delete distributor error:", err);
     }
+  };
+
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (distributor) => {
+    setDistributorToDelete(distributor);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!distributorToDelete) return;
+    
+    setDeleteLoading(true);
+    try {
+      await apiService.delete(`/admin/distributors/${distributorToDelete._id}`);
+      toast.success("Distributor deleted successfully!");
+      fetchDistributors();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete distributor.");
+      console.error("Delete distributor error:", err);
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setDistributorToDelete(null);
+    }
+  };
+
+  // Close delete modal
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDistributorToDelete(null);
   };
 
   // Edit distributor
@@ -192,44 +209,28 @@ const DistributorManagement = () => {
 
     // Basic form validation
     if (!editDistributorName.trim() || !editCompanyName.trim() || !editUsername.trim()) {
-      setMessage("Distributor name, company name, and username are required.");
+      toast.error("Distributor name, company name, and username are required.");
       return;
     }
 
     try {
-      const res = await fetch(`${config.API_BASE}/admin/distributors/${editingDistributor._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          distributorName: editDistributorName,
-          name: editCompanyName,
-          contact: editContact,
-          username: editUsername,
-          password: editPassword.trim() || undefined, // Only send password if provided
-          status: editStatus,
-        }),
+      const response = await apiService.put(`/admin/distributors/${editingDistributor._id}`, {
+        distributorName: editDistributorName,
+        companyName: editCompanyName,
+        contact: editContact,
+        username: editUsername,
+        password: editPassword.trim() || undefined, // Only send password if provided
+        status: editStatus,
       });
 
-      if (res.ok) {
-        setMessage("Distributor updated successfully.");
-        // Reset form and refresh data
-        setEditingDistributor(null);
-        setShowEditForm(false);
-        resetEditForm();
-        fetchDistributors();
-      } else {
-        let errorText = "Failed to update distributor.";
-        try {
-          const errData = await res.json();
-          if (errData.message) errorText = errData.message;
-        } catch { }
-        setMessage(errorText);
-      }
+      toast.success("Distributor updated successfully!");
+      // Reset form and refresh data
+      setEditingDistributor(null);
+      setShowEditForm(false);
+      resetEditForm();
+      fetchDistributors();
     } catch (err) {
-      setMessage("Server error when updating distributor.");
+      toast.error(err.message || "Failed to update distributor.");
       console.error("Update distributor error:", err);
     }
   };
@@ -237,8 +238,8 @@ const DistributorManagement = () => {
   // Start editing a distributor
   const startEdit = (distributor) => {
     setEditingDistributor(distributor);
-    setEditDistributorName(distributor.distributorName || distributor.name || "");
-    setEditCompanyName(distributor.name || "");
+    setEditDistributorName(distributor.distributorName || distributor.companyName || "");
+    setEditCompanyName(distributor.companyName || "");
     setEditContact(distributor.contact || "");
     setEditUsername(distributor.username || "");
     setEditStatus(distributor.status || "pending");
@@ -264,23 +265,12 @@ const DistributorManagement = () => {
                      currentStatus === 'active' ? 'inactive' : 'pending';
     
     try {
-      const res = await fetch(`${config.API_BASE}/admin/distributors/${distributorId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      await apiService.put(`/admin/distributors/${distributorId}`, { status: newStatus });
 
-      if (res.ok) {
-        setMessage(`Status changed from ${currentStatus} to ${newStatus}`);
-        fetchDistributors();
-      } else {
-        setMessage("Failed to update status");
-      }
+      toast.success(`Status changed from ${currentStatus} to ${newStatus}`);
+      fetchDistributors();
     } catch (err) {
-      setMessage("Server error when updating status");
+      toast.error(err.message || "Failed to update status");
       console.error("Toggle status error:", err);
     }
   };
@@ -311,37 +301,49 @@ const DistributorManagement = () => {
       <div className="row mb-4">
         <div className="col-lg-4 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-info">
-            <div className="card-body text-center">
-              <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-truck text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-truck text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Distributors</h6>
+                  <h4 className="mb-0 fw-bold text-info">{summaryStats.totalDistributors}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-info mb-1">{summaryStats.totalDistributors}</h4>
-              <p className="text-muted mb-0">Total Distributors</p>
             </div>
           </div>
         </div>
         <div className="col-lg-4 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-success">
-            <div className="card-body text-center">
-              <div className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-check-circle text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-check-circle text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Active</h6>
+                  <h4 className="mb-0 fw-bold text-success">{summaryStats.activeCount}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-success mb-1">{summaryStats.activeCount}</h4>
-              <p className="text-muted mb-0">Active</p>
             </div>
           </div>
         </div>
         <div className="col-lg-4 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-danger">
-            <div className="card-body text-center">
-              <div className="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-times-circle text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-times-circle text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Inactive</h6>
+                  <h4 className="mb-0 fw-bold text-danger">{summaryStats.inactiveCount}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-danger mb-1">{summaryStats.inactiveCount}</h4>
-              <p className="text-muted mb-0">Inactive</p>
             </div>
           </div>
         </div>
@@ -352,8 +354,8 @@ const DistributorManagement = () => {
         <div className="col-12">
           <div className="card border shadow-sm">
             <div className="card-body">
-              <div className="row g-3">
-                <div className="col-lg-4 col-md-6">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
                   <div className="position-relative">
                     <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input
@@ -362,25 +364,41 @@ const DistributorManagement = () => {
                       placeholder="Search distributors..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '200px' }}
                     />
                   </div>
-                </div>
-                <div className="col-lg-3 col-md-6">
                   <select
                     className="form-select"
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value)}
+                    style={{ width: '150px' }}
                   >
                     <option value="">All Statuses</option>
                     {statuses.map(status => (
                       <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
                     ))}
                   </select>
-                </div>
-                <div className="col-lg-3 col-md-6">
-                  <button className="btn btn-outline-primary w-100" onClick={exportToCSV}>
+                  <button className="btn btn-outline-primary" onClick={exportToCSV}>
                     <i className="fas fa-download me-2"></i>
                     Export
+                  </button>
+                </div>
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="fas fa-th-large me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="fas fa-table me-2"></i>
+                    Table
                   </button>
                 </div>
               </div>
@@ -389,58 +407,34 @@ const DistributorManagement = () => {
         </div>
       </div>
 
-      {/* View Mode Toggle */}
-      <div className="row mb-3">
-        <div className="col-12">
-          <div className="d-flex justify-content-center">
-            <div className="btn-group" role="group">
-              <button
-                type="button"
-                className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('cards')}
-              >
-                <i className="fas fa-th-large me-2"></i>
-                Cards
-              </button>
-              <button
-                type="button"
-                className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('table')}
-              >
-                <i className="fas fa-table me-2"></i>
-                Table
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Message */}
-      {message && (
-        <div className="alert alert-info alert-dismissible fade show">
-          <i className="fas fa-info-circle me-2"></i>
-          {message}
-          <button type="button" className="btn-close" onClick={() => setMessage("")}></button>
-        </div>
-      )}
-
-      {/* Add Distributor Button */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <button 
-            className="btn btn-success"
-            onClick={() => {
-              if (showEditForm) {
-                resetEditForm();
-              }
-              setShowAddForm(!showAddForm);
-            }}
-          >
-            <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-2`}></i>
-            {showAddForm ? 'Hide Add Form' : 'Add New Distributor'}
-          </button>
-        </div>
-      </div>
+              {/* Enhanced Add Distributor Button Section */}
+       <div className="row mb-4">
+         <div className="col-12 text-center">
+           <button
+             className="btn btn-primary btn-lg px-5 py-3 fw-bold fs-5 shadow"
+             style={{
+               borderRadius: '50px',
+               minWidth: '250px'
+             }}
+             onClick={() => {
+               if (showEditForm) {
+                 resetEditForm();
+               }
+               setShowAddForm(!showAddForm);
+             }}
+           >
+             <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-3 fs-4`}></i>
+             {showAddForm ? 'Hide Add Form' : 'Add New Distributor Member'}
+           </button>
+           
+           {!showAddForm && (
+             <p className="mt-3 mb-0 text-muted fs-6">
+               <i className="fas fa-info-circle me-2"></i>
+               Click to add a new distributor to your network
+             </p>
+           )}
+         </div>
+       </div>
 
       {/* Add Distributor Form */}
       {showAddForm && (
@@ -674,27 +668,54 @@ const DistributorManagement = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="card-body">
-                      <h6 className="card-title fw-bold">{dist.distributorName || dist.name || "Unnamed"}</h6>
-                      <div className="mb-3">
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-building text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Company:</span>
-                          <span className="fw-medium">{dist.name}</span>
-                        </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-at text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Username:</span>
-                          <span className="fw-medium">{dist.username}</span>
-                        </div>
-                        {dist.contact && (
-                          <div className="d-flex align-items-center mb-2">
-                            <i className="fas fa-phone text-muted me-2" style={{width: '16px'}}></i>
-                            <span className="text-muted me-2">Contact:</span>
-                            <span className="fw-medium">{dist.contact}</span>
-                          </div>
-                        )}
-                      </div>
+                                         <div className="card-body">
+                       <h6 className="card-title fw-bold text-center mb-3">{dist.distributorName || dist.companyName || "Unnamed"}</h6>
+                       
+                       <div className="row g-2 mb-3">
+                         <div className="col-12">
+                           <div className="d-flex align-items-center p-2 bg-light rounded">
+                             <i className="fas fa-building text-primary me-3" style={{ width: '20px' }}></i>
+                             <div>
+                               <small className="text-muted d-block">Company</small>
+                               <span className="fw-semibold">{dist.companyName}</span>
+                             </div>
+                           </div>
+                         </div>
+                         
+                         <div className="col-12">
+                           <div className="d-flex align-items-center p-2 bg-light rounded">
+                             <i className="fas fa-at text-primary me-3" style={{ width: '20px' }}></i>
+                             <div>
+                               <small className="text-muted d-block">Username</small>
+                               <span className="fw-semibold">{dist.username}</span>
+                             </div>
+                           </div>
+                         </div>
+                         
+                         {dist.contact && (
+                           <div className="col-12">
+                             <div className="d-flex align-items-center p-2 bg-light rounded">
+                               <i className="fas fa-phone text-primary me-3" style={{ width: '20px' }}></i>
+                               <div>
+                                 <small className="text-muted d-block">Contact</small>
+                                 <span className="fw-semibold">{dist.contact}</span>
+                               </div>
+                             </div>
+                           </div>
+                         )}
+                         
+                         <div className="col-12">
+                           <div className="d-flex align-items-center p-2 bg-light rounded">
+                             <i className="fas fa-toggle-on text-primary me-3" style={{ width: '20px' }}></i>
+                             <div>
+                               <small className="text-muted d-block">Status</small>
+                               <span className={`fw-semibold badge ${dist.status === 'active' ? 'bg-success' : dist.status === 'inactive' ? 'bg-danger' : 'bg-warning'}`}>
+                                 {dist.status || 'pending'}
+                               </span>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
                       
                       <div className="d-flex gap-2">
                         <button className="btn btn-outline-warning btn-sm flex-fill" title="Edit distributor" onClick={() => startEdit(dist)}>
@@ -708,7 +729,7 @@ const DistributorManagement = () => {
                           <i className="fas fa-sync-alt me-1"></i>
                           Toggle Status
                         </button>
-                        <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => deleteDistributor(dist._id)} title="Delete distributor">
+                                                 <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => showDeleteConfirmation(dist)} title="Delete distributor">
                           <i className="fas fa-trash me-1"></i>Delete
                         </button>
                       </div>
@@ -742,13 +763,13 @@ const DistributorManagement = () => {
                           <td>
                             <div className="d-flex align-items-center">
                               <i className="fas fa-building me-2 text-muted"></i>
-                              {dist.name}
+                              {dist.companyName}
                             </div>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
                               <i className="fas fa-truck me-2 text-muted"></i>
-                              {dist.distributorName || dist.name || "Unnamed"}
+                              {dist.distributorName || dist.companyName || "Unnamed"}
                             </div>
                           </td>
                           <td>
@@ -783,7 +804,7 @@ const DistributorManagement = () => {
                               <button className="btn btn-sm btn-outline-warning" title="Edit distributor" onClick={() => startEdit(dist)}>
                                 <i className="fas fa-edit"></i>
                               </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => deleteDistributor(dist._id)} title="Delete distributor">
+                                                             <button className="btn btn-sm btn-outline-danger" onClick={() => showDeleteConfirmation(dist)} title="Delete distributor">
                                 <i className="fas fa-trash"></i>
                               </button>
                             </div>
@@ -798,6 +819,50 @@ const DistributorManagement = () => {
           )}
         </>
       )}
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        show={showDeleteModal}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        title="Confirm Delete Distributor"
+        message="Are you sure you want to delete this distributor?"
+        itemName={distributorToDelete?.distributorName || distributorToDelete?.companyName}
+        itemDetails={
+          distributorToDelete ? (
+            <>
+              <p className="text-muted mb-1">
+                <i className="fas fa-building me-1"></i>
+                Company: {distributorToDelete.companyName}
+              </p>
+              <p className="text-muted mb-1">
+                <i className="fas fa-at me-1"></i>
+                Username: {distributorToDelete.username}
+              </p>
+              <p className="text-muted mb-0">
+                <i className="fas fa-phone me-1"></i>
+                Contact: {distributorToDelete.contact || "N/A"}
+              </p>
+            </>
+          ) : null
+        }
+        loading={deleteLoading}
+        confirmText="Delete Distributor"
+      />
+      
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };

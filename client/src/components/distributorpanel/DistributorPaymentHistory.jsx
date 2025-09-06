@@ -102,7 +102,7 @@ export default function DistributorPaymentHistory() {
       filtered = filtered.filter(payment => 
         payment._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (payment.distributorId?.distributorName && payment.distributorId.distributorName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (payment.distributorId?.name && payment.distributorId.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (payment.distributorId?.companyName && payment.distributorId.companyName.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (payment.createdBy?.username && payment.createdBy.username.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
@@ -203,11 +203,11 @@ export default function DistributorPaymentHistory() {
   }
 
   return (
-    <div className="container-fluid p-4" style={{ maxWidth: '1200px' }}>
+    <div className="container-fluid px-4 py-2" style={{ maxWidth: '1200px' }}>
       {/* Header */}
-      <div className="text-center mb-4 p-4 bg-info bg-gradient rounded-4 text-white shadow">
-        <h2 className="mb-2 fw-semibold" style={{ fontSize: '2.2rem' }}>My Payment History</h2>
-        <p className="mb-0 fs-5 opacity-75">View all payments made by admin/staff for your orders</p>
+      <div className="text-center mb-3 p-3 bg-info bg-gradient rounded-4 text-white shadow">
+        <h2 className="mb-1 fw-semibold" style={{ fontSize: '1.5rem' }}>My Payment History</h2>
+        <p className="mb-0 small opacity-75">View all payments made by admin/staff for your orders</p>
       </div>
 
       {/* Message Display */}
@@ -224,44 +224,44 @@ export default function DistributorPaymentHistory() {
       )}
 
       {/* Summary Statistics */}
-      <div className="mb-4">
+      <div className="mb-3">
         {/* First Row: Total Payments and Total Amount */}
-        <div className="row g-3 mb-3">
+        <div className="row g-2 mb-2">
           <div className="col-6">
-            <div className="card bg-primary bg-opacity-10 border-primary border-start border-4 h-100">
-              <div className="card-body text-center">
-                <div className="fw-semibold text-muted small">Total Payments</div>
-                <div className="fs-4 fw-bold text-dark">{summaryStats.totalPayments}</div>
+            <div className="card bg-primary bg-opacity-10 border-primary border-start border-3 h-100">
+              <div className="card-body text-center py-2">
+                <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Total Payments</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{summaryStats.totalPayments}</div>
               </div>
             </div>
           </div>
           <div className="col-6">
-            <div className="card bg-success bg-opacity-10 border-success border-start border-4 h-100">
-              <div className="card-body text-center">
-                <div className="fw-semibold text-muted small">Total Amount</div>
-                <div className="fs-4 fw-bold text-dark">₹{summaryStats.totalAmount.toFixed(2)}</div>
+            <div className="card bg-success bg-opacity-10 border-success border-start border-3 h-100">
+              <div className="card-body text-center py-2">
+                <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Total Amount</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>₹{summaryStats.totalAmount.toFixed(2)}</div>
               </div>
             </div>
           </div>
         </div>
         
         {/* Second Row: Digital Payments and Bank Transfers */}
-        <div className="row g-3">
+        <div className="row g-2">
           <div className="col-6">
-            <div className="card bg-info bg-opacity-10 border-info border-start border-4 h-100">
-              <div className="card-body text-center">
-                <div className="fw-semibold text-muted small">Digital Payments</div>
-                <div className="fs-4 fw-bold text-dark">
+            <div className="card bg-info bg-opacity-10 border-info border-start border-3 h-100">
+              <div className="card-body text-center py-2">
+                <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Digital Payments</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>
                   {(summaryStats.methodStats["PhonePe"] || 0) + (summaryStats.methodStats["Google Pay"] || 0)}
                 </div>
               </div>
             </div>
           </div>
           <div className="col-6">
-            <div className="card bg-warning bg-opacity-10 border-warning border-start border-4 h-100">
-              <div className="card-body text-center">
-                <div className="fw-semibold text-muted small">Bank Transfers</div>
-                <div className="fs-4 fw-bold text-dark">
+            <div className="card bg-warning bg-opacity-10 border-warning border-start border-3 h-100">
+              <div className="card-body text-center py-2">
+                <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Bank Transfers</div>
+                <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>
                   {(summaryStats.methodStats["Bank Transfer"] || 0) + (summaryStats.methodStats["Net Banking"] || 0)}
                 </div>
               </div>
@@ -271,28 +271,29 @@ export default function DistributorPaymentHistory() {
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="card mb-4">
-        <div className="card-body">
-          <div className="mb-3">
-            <div className="position-relative">
-              <input
-                type="text"
-                placeholder="Search payments by ID, distributor, or admin..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-control ps-5"
-              />
-              <span className="position-absolute top-50 start-0 translate-middle-y ms-3">🔍</span>
+      <div className="card mb-3">
+        <div className="card-body py-2">
+          <div className="row g-2 align-items-end">
+            {/* Search Input */}
+            <div className="col-md-3 col-6">
+              <div className="position-relative">
+                <input
+                  type="text"
+                  placeholder="Search payments..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-control form-control-sm ps-4"
+                />
+                <span className="position-absolute top-50 start-0 translate-middle-y ms-2" style={{ fontSize: '0.8rem' }}>🔍</span>
+              </div>
             </div>
-          </div>
-          
-          <div className="row g-3 mb-3">
-            <div className="col-md-3">
-              <label className="form-label fw-semibold">Month:</label>
+            
+            {/* Month Select */}
+            <div className="col-md-2 col-6">
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="form-select"
+                className="form-select form-select-sm"
               >
                 <option value="">All Months</option>
                 {getMonthOptions().map(option => (
@@ -301,12 +302,12 @@ export default function DistributorPaymentHistory() {
               </select>
             </div>
             
-            <div className="col-md-3">
-              <label className="form-label fw-semibold">Year:</label>
+            {/* Year Select */}
+            <div className="col-md-1 col-6">
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="form-select"
+                className="form-select form-select-sm"
               >
                 {getYearOptions().map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -314,12 +315,12 @@ export default function DistributorPaymentHistory() {
               </select>
             </div>
             
-            <div className="col-md-3">
-              <label className="form-label fw-semibold">Payment Method:</label>
+            {/* Payment Method Select */}
+            <div className="col-md-2 col-6">
               <select
                 value={selectedPaymentMethod}
                 onChange={(e) => setSelectedPaymentMethod(e.target.value)}
-                className="form-select"
+                className="form-select form-select-sm"
               >
                 <option value="">All Methods</option>
                 {paymentMethods.map(method => (
@@ -328,9 +329,10 @@ export default function DistributorPaymentHistory() {
               </select>
             </div>
             
-            <div className="col-md-3 d-flex align-items-end gap-2">
+            {/* Action Buttons */}
+            <div className="col-md-2 col-6 d-flex gap-1">
               <button 
-                className="btn btn-outline-secondary flex-fill"
+                className="btn btn-outline-secondary btn-sm flex-fill"
                 onClick={() => { 
                   setSelectedMonth(""); 
                   setSelectedYear(new Date().getFullYear().toString()); 
@@ -338,32 +340,32 @@ export default function DistributorPaymentHistory() {
                   setSearchTerm(""); 
                 }}
               >
-                Clear Filters
+                Clear
               </button>
               
               <button 
-                className="btn btn-success flex-fill"
+                className="btn btn-success btn-sm flex-fill"
                 onClick={exportToCSV}
               >
-                Export CSV
+                Export
               </button>
             </div>
-          </div>
 
-          {/* View Mode Toggle */}
-          <div className="d-flex gap-2">
-            <button 
-              className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setViewMode('cards')}
-            >
-              📋 Cards
-            </button>
-            <button 
-              className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setViewMode('table')}
-            >
-              📊 Table
-            </button>
+            {/* View Mode Toggle */}
+            <div className="col-md-2 col-6 d-flex gap-1">
+              <button 
+                className={`btn btn-sm flex-fill ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('cards')}
+              >
+                Cards
+              </button>
+              <button 
+                className={`btn btn-sm flex-fill ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('table')}
+              >
+                Table
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -404,7 +406,7 @@ export default function DistributorPaymentHistory() {
                         <div className="col-12">
                           <div className="d-flex justify-content-between">
                             <span className="text-muted small">Payment Date:</span>
-                            <span className="fw-semibold text-dark">
+                            <span className="fw-semibold text-primary">
                               {new Date(payment.paymentDate).toLocaleDateString()}
                             </span>
                           </div>
@@ -412,17 +414,47 @@ export default function DistributorPaymentHistory() {
                         <div className="col-12">
                           <div className="d-flex justify-content-between">
                             <span className="text-muted small">Recorded By:</span>
-                            <span className="fw-semibold text-dark">
+                            <span className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>
                               {payment.createdBy?.username || "N/A"}
                             </span>
                           </div>
                         </div>
                         <div className="col-12">
                           <div className="d-flex justify-content-between">
-                            <span className="text-muted small">Receipt:</span>
-                            <span className="fw-semibold text-dark">
-                              {getImageUrl(payment.receiptImageUrl) ? "Available" : "Not Available"}
-                            </span>
+                            <span className="text-muted small">Amount:</span>
+                            <span className="fw-semibold text-dark">₹{payment.amount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <div className="fw-semibold text-muted small mb-2">Payment Details:</div>
+                        <div className="row g-2">
+                          <div className="col-12">
+                            <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded border">
+                              <div className="d-flex align-items-center">
+                                <div className="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                     style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
+                                  ₹
+                                </div>
+                                <div>
+                                  <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
+                                    {payment.paymentMethod || 'N/A'}
+                                  </div>
+                                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                    Receipt: {getImageUrl(payment.receiptImageUrl) ? "Available" : "Not Available"}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-end">
+                                <div className="fw-bold text-success" style={{ fontSize: '0.85rem' }}>
+                                  ₹{payment.amount.toFixed(2)}
+                                </div>
+                                <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                  {new Date(payment.paymentDate).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -433,7 +465,6 @@ export default function DistributorPaymentHistory() {
                         <div className="small text-muted">
                           Created: {new Date(payment.createdAt).toLocaleDateString()}
                         </div>
-                        <div className="fw-bold text-dark fs-5">₹{payment.amount.toFixed(2)}</div>
                       </div>
                       
                       <div className="d-flex gap-2">

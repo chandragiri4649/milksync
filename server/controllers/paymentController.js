@@ -11,7 +11,7 @@ exports.createPayment = async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    const userId = req.user._id; // authenticated user
+    const userId = req.session?.userId; // authenticated user from session
 
     const payment = await paymentService.createPaymentAndUpdateWallet(
       distributorId,
@@ -50,13 +50,21 @@ exports.getPayments = async (req, res) => {
 // Get payments for a specific distributor (distributor view)
 exports.getDistributorPayments = async (req, res) => {
   try {
-    const distributorId = req.user.id;
+    console.log("🔍 paymentController - getDistributorPayments called");
+    console.log("🔍 paymentController - Session data:", {
+      userId: req.session?.userId,
+      userRole: req.session?.userRole
+    });
+    
+    // Use session user ID instead of JWT user ID
+    const distributorId = req.session?.userId;
     
     if (!distributorId) {
+      console.log("❌ paymentController - No distributor ID in session");
       return res.status(401).json({ error: "Distributor ID not found" });
     }
 
-    console.log(`GET /payments/distributor - Fetching payments for distributor: ${distributorId}`);
+    console.log(`🔍 paymentController - Fetching payments for distributor: ${distributorId}`);
     
     // Get payments for this specific distributor
     const payments = await Payment.find({ distributorId: distributorId })

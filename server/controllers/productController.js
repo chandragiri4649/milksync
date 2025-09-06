@@ -7,13 +7,13 @@ exports.createProductWithImage = async (req, res) => {
     console.log("📝 Received request body:", req.body);
     console.log("📁 Received file:", req.file);
     
-    const { company, name, quantity, unit, costPerTub, costPerPacket, packetsPerTub } = req.body;
+    const { distributorId, name, productQuantity, productUnit, costPerTub, costPerPacket, packetsPerTub } = req.body;
     
     // Validate required fields
-    if (!company || !name || !quantity || !unit || !costPerTub || !costPerPacket || !packetsPerTub) {
+    if (!distributorId || !name || !productQuantity || !productUnit || !costPerTub || !costPerPacket || !packetsPerTub) {
       return res.status(400).json({ 
         error: "Missing required fields", 
-        received: { company, name, quantity, unit, costPerTub, costPerPacket, packetsPerTub } 
+        received: { distributorId, name, productQuantity, productUnit, costPerTub, costPerPacket, packetsPerTub } 
       });
     }
 
@@ -22,12 +22,12 @@ exports.createProductWithImage = async (req, res) => {
     }
 
     // Validate numbers
-    const quantityNum = parseFloat(quantity);
+    const productQuantityNum = parseFloat(productQuantity);
     const costPerTubNum = parseFloat(costPerTub);
     const costPerPacketNum = parseFloat(costPerPacket);
     const packetsPerTubNum = parseInt(packetsPerTub);
 
-    if (isNaN(quantityNum)) return res.status(400).json({ error: "Quantity must be a valid number" });
+    if (isNaN(productQuantityNum)) return res.status(400).json({ error: "Product quantity must be a valid number" });
     if (isNaN(costPerTubNum)) return res.status(400).json({ error: "Cost per tub must be a valid number" });
     if (isNaN(costPerPacketNum)) return res.status(400).json({ error: "Cost per packet must be a valid number" });
     if (isNaN(packetsPerTubNum)) return res.status(400).json({ error: "Packets per tub must be a valid number" });
@@ -36,10 +36,10 @@ exports.createProductWithImage = async (req, res) => {
     const imageUrl = req.file.path;
 
     const product = new Product({
-      company,
+      distributorId,
       name,
-      quantity: quantityNum,
-      unit,
+      productQuantity: productQuantityNum,
+      productUnit,
       imageUrl,
       costPerTub: costPerTubNum,
       costPerPacket: costPerPacketNum,
@@ -61,7 +61,7 @@ exports.createProductWithImage = async (req, res) => {
 // Get all products (also return costForOneTub)
 exports.getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.find().populate('distributorId', 'distributorName companyName').sort({ createdAt: -1 });
     const withCost = products.map(p => ({
       ...p._doc,
       costForOneTub: p.costPerPacket * p.packetsPerTub
@@ -76,7 +76,7 @@ exports.getProducts = async (req, res) => {
 // Update product with optional image file
 exports.updateProductWithImage = async (req, res) => {
   try {
-    const { company, name, quantity, unit, costPerTub, costPerPacket, packetsPerTub } = req.body;
+    const { distributorId, name, productQuantity, productUnit, costPerTub, costPerPacket, packetsPerTub } = req.body;
     let updateData = {};
 
     // Get the current product to check for existing image
@@ -85,16 +85,16 @@ exports.updateProductWithImage = async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    if (company !== undefined) updateData.company = company;
+    if (distributorId !== undefined) updateData.distributorId = distributorId;
     if (name !== undefined) updateData.name = name;
-    if (quantity !== undefined) {
-      const quantityNum = parseFloat(quantity);
-      if (isNaN(quantityNum)) {
-        return res.status(400).json({ error: "Quantity must be a valid number" });
+    if (productQuantity !== undefined) {
+      const productQuantityNum = parseFloat(productQuantity);
+      if (isNaN(productQuantityNum)) {
+        return res.status(400).json({ error: "Product quantity must be a valid number" });
       }
-      updateData.quantity = quantityNum;
+      updateData.productQuantity = productQuantityNum;
     }
-    if (unit !== undefined) updateData.unit = unit;
+    if (productUnit !== undefined) updateData.productUnit = productUnit;
     if (costPerTub !== undefined) {
       const cptNum = parseFloat(costPerTub);
       if (isNaN(cptNum)) {
@@ -143,7 +143,7 @@ exports.updateProductWithImage = async (req, res) => {
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    );
+    ).populate('distributorId', 'distributorName companyName');
 
     res.json(updated);
   } catch (err) {
@@ -153,17 +153,17 @@ exports.updateProductWithImage = async (req, res) => {
 };
 
 
-// Get products by company with costForOneTub
-exports.getProductsByCompany = async (req, res) => {
+// Get products by distributor with costForOneTub
+exports.getProductsByDistributor = async (req, res) => {
   try {
-    const products = await Product.find({ company: req.params.companyName }).sort({ createdAt: -1 });
+    const products = await Product.find({ distributorId: req.params.distributorId }).populate('distributorId', 'distributorName companyName').sort({ createdAt: -1 });
     const withCost = products.map(p => ({
       ...p._doc,
       costForOneTub: p.costPerPacket * p.packetsPerTub
     }));
     res.json(withCost);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch products by company" });
+    res.status(500).json({ error: "Failed to fetch products by distributor" });
   }
 };
 

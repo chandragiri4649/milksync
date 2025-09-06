@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema({
     enum: ['Admin', 'Staff'] // Can only reference Admin or Staff models
   },
   distributorId: { type: mongoose.Schema.Types.ObjectId, ref: "Distributor", required: true },
-  customerName: { type: String, default: "Customer" }, // Customer name for quick access
+  customerName: { type: String }, // Customer name for quick access (optional)
   orderDate: { type: Date, required: true },
   status: { type: String, default: "pending" },
   locked: { type: Boolean, default: false }, // 🚫 Prevent changes when true

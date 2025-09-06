@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const distributorSchema = new mongoose.Schema({
   distributorName: { type: String, required: true },
-  name: { type: String, required: true },
+  companyName: { type: String, required: true },
   contact: { type: String },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true }, // hashed password

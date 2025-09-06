@@ -1,29 +1,35 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import DeleteModal from "../DeleteModal";
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
-  const [company, setCompany] = useState("");
+  const [distributors, setDistributors] = useState([]);
+  const [selectedDistributorId, setSelectedDistributorId] = useState("");
   const [productName, setProductName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("ml");
+  const [productQuantity, setProductQuantity] = useState("");
+  const [productUnit, setProductUnit] = useState("ml");
   const [costPerPacket, setCostPerPacket] = useState("");
   const [costPerTub, setCostPerTub] = useState("");
   const [packetsPerTub, setPacketsPerTub] = useState("");
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState("");
   const [editProductId, setEditProductId] = useState(null);
-  const [message, setMessage] = useState("");
-  
+
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Enhanced state for modern features
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState("");
+  const [selectedDistributorFilter, setSelectedDistributorFilter] = useState("");
   const [selectedUnit, setSelectedUnit] = useState("");
   const [viewMode, setViewMode] = useState("cards");
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const { token } = useAuth();
   const formRef = useRef();
 
   const units = ["ml", "kg", "gm"];
@@ -37,43 +43,74 @@ const ProductManagement = () => {
     return `${process.env.REACT_APP_IMAGE_BASE_URL || ''}${imageUrl}`;
   };
 
+  // fetch distributors
+  const fetchDistributors = useCallback(async () => {
+    try {
+      const data = await apiService.get('/distributor');
+      setDistributors(data);
+    } catch {
+      toast.error("Failed to fetch distributors.");
+    }
+  }, []);
+
   // fetch products
   const fetchProducts = useCallback(async () => {
     try {
       const data = await apiService.get('/products');
       setProducts(data);
     } catch {
-      setMessage("Failed to fetch products.");
+      toast.error("Failed to fetch products.");
     }
   }, []);
 
   useEffect(() => {
+    fetchDistributors();
     fetchProducts();
-  }, [fetchProducts]);
+  }, [fetchDistributors, fetchProducts]);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && showDeleteModal) {
+        setShowDeleteModal(false);
+        setProductToDelete(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showDeleteModal]);
 
   // Filter products based on search criteria
   const getFilteredProducts = () => {
     let filtered = products;
-    
-    // Filter by company
-    if (selectedCompany) {
-      filtered = filtered.filter(product => product.company === selectedCompany);
+
+    // Filter by distributor
+    if (selectedDistributorFilter) {
+      filtered = filtered.filter(product => {
+        const productDistributorId = typeof product.distributorId === 'object' ? product.distributorId._id : product.distributorId;
+        return productDistributorId === selectedDistributorFilter;
+      });
     }
 
     // Filter by unit
     if (selectedUnit) {
-      filtered = filtered.filter(product => product.unit === selectedUnit);
+      filtered = filtered.filter(product => product.productUnit === selectedUnit);
     }
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(product => 
-        (product.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.company || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (product.unit || "").toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter(product => {
+        const productDistributorId = typeof product.distributorId === 'object' ? product.distributorId._id : product.distributorId;
+        const distributor = distributors.find(d => d._id === productDistributorId);
+        const distributorName = distributor ? distributor.companyName : '';
+        
+        return (product.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          distributorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.productUnit || "").toLowerCase().includes(searchTerm.toLowerCase())
+      });
     }
-    
+
     return filtered;
   };
 
@@ -81,22 +118,28 @@ const ProductManagement = () => {
   const exportToCSV = () => {
     const filteredProducts = getFilteredProducts();
     if (filteredProducts.length === 0) {
-      setMessage("No products to export");
+      toast.warning("No products to export");
       return;
     }
 
     const csvContent = [
-      ["Company", "Product Name", "Quantity", "Unit", "Cost Per Tub", "Cost Per Packet", "Packets Per Tub", "Total Value"],
-      ...filteredProducts.map(product => [
-        product.company || "N/A",
-        product.name || "N/A",
-        product.quantity || "N/A",
-        product.unit || "N/A",
-        product.costPerTub || "N/A",
-        product.costPerPacket || "N/A",
-        product.packetsPerTub || "N/A",
-        ((product.costPerTub || 0) * (product.quantity || 0)).toFixed(2)
-      ])
+      ["Distributor", "Product Name", "Product Quantity", "Product Unit", "Cost Per Tub", "Cost Per Packet", "Packets Per Tub", "Total Value"],
+      ...filteredProducts.map(product => {
+        const productDistributorId = typeof product.distributorId === 'object' ? product.distributorId._id : product.distributorId;
+        const distributor = distributors.find(d => d._id === productDistributorId);
+        const distributorName = distributor ? distributor.companyName : 'Unknown';
+        
+        return [
+          distributorName,
+          product.name || "N/A",
+          product.productQuantity || "N/A",
+          product.productUnit || "N/A",
+          product.costPerTub || "N/A",
+          product.costPerPacket || "N/A",
+          product.packetsPerTub || "N/A",
+          ((product.costPerTub || 0) * (product.productQuantity || 0)).toFixed(2)
+        ];
+      })
     ].map(row => row.join(",")).join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -106,20 +149,23 @@ const ProductManagement = () => {
     a.download = `products_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setMessage("Products list exported successfully!");
+    toast.success("Products list exported successfully!");
   };
 
   // Calculate summary statistics
   const getSummaryStats = () => {
     const filteredProducts = getFilteredProducts();
     const totalProducts = filteredProducts.length;
-    const totalCompanies = [...new Set(filteredProducts.map(p => p.company))].length;
-    const totalValue = filteredProducts.reduce((sum, p) => 
+    const totalDistributors = [...new Set(filteredProducts.map(p => {
+      const productDistributorId = typeof p.distributorId === 'object' ? p.distributorId._id : p.distributorId;
+      return productDistributorId;
+    }))].length;
+    const totalValue = filteredProducts.reduce((sum, p) =>
       sum + ((p.costPerPacket || 0) * (p.packetsPerTub || 0)), 0
     );
     const totalPackets = filteredProducts.reduce((sum, p) => sum + (p.packetsPerTub || 0), 0);
-    
-    return { totalProducts, totalCompanies, totalValue, totalPackets };
+
+    return { totalProducts, totalDistributors, totalValue, totalPackets };
   };
 
   const summaryStats = getSummaryStats();
@@ -136,103 +182,81 @@ const ProductManagement = () => {
   // add product
   const addProduct = async (e) => {
     e.preventDefault();
-    setMessage("");
 
     if (
-      !company.trim() ||
+      !selectedDistributorId ||
       !productName.trim() ||
-      !quantity.trim() ||
+      !productQuantity.trim() ||
       !costPerTub ||
       !costPerPacket ||
       !packetsPerTub
     ) {
-      setMessage("All required fields must be filled.");
+      toast.error("All required fields must be filled.");
       return;
     }
     if (!imageFile) {
-      setMessage("Please upload a product image.");
+      toast.error("Please upload a product image.");
       return;
     }
 
     try {
       const formData = new FormData();
-      formData.append("company", company);
+      formData.append("distributorId", selectedDistributorId);
       formData.append("name", productName);
-      formData.append("quantity", quantity);
-      formData.append("unit", unit);
+      formData.append("productQuantity", productQuantity);
+      formData.append("productUnit", productUnit);
       formData.append("costPerTub", costPerTub);
       formData.append("costPerPacket", costPerPacket);
       formData.append("packetsPerTub", packetsPerTub);
       formData.append("image", imageFile);
 
-      const res = await fetch(`${config.API_BASE}/products`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const response = await apiService.post('/products', formData);
 
-      if (res.ok) {
-        setMessage("Product added successfully.");
-        resetForm();
-        setShowAddForm(false);
-        fetchProducts();
-      } else {
-        let errorText = "Failed to add product.";
-        try {
-          const errData = await res.json();
-          if (errData.message) errorText = errData.message;
-        } catch {}
-        setMessage(errorText);
-      }
-    } catch {
-      setMessage("Server error when adding product.");
+      toast.success("Product added successfully!");
+      resetForm();
+      setShowAddForm(false);
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.message || "Failed to add product.");
+      console.error("Add product error:", err);
     }
   };
 
   // UPDATE existing product
   const updateProduct = async (e) => {
     e.preventDefault();
-    setMessage("");
 
     if (
-      !company.trim() ||
+      !selectedDistributorId ||
       !productName.trim() ||
-      (typeof quantity === "string" ? !quantity.trim() : !quantity) ||
+      (typeof productQuantity === "string" ? !productQuantity.trim() : !productQuantity) ||
       !costPerTub ||
       !costPerPacket ||
       !packetsPerTub
     ) {
-      setMessage("All required fields must be filled.");
+      toast.error("All required fields must be filled.");
       return;
     }
 
     const formData = new FormData();
-    formData.append("company", company);
+    formData.append("distributorId", selectedDistributorId);
     formData.append("name", productName);
-    formData.append("quantity", quantity);
-    formData.append("unit", unit);
+    formData.append("productQuantity", productQuantity);
+    formData.append("productUnit", productUnit);
     formData.append("costPerTub", costPerTub);
     formData.append("costPerPacket", costPerPacket);
     formData.append("packetsPerTub", packetsPerTub);
     if (imageFile) formData.append("image", imageFile);
 
     try {
-      const res = await fetch(`${config.API_BASE}/products/${editProductId}`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const response = await apiService.put(`/products/${editProductId}`, formData);
 
-      if (res.ok) {
-        setMessage("Product updated successfully.");
-        resetForm();
-        fetchProducts();
-      } else {
-        const err = await res.json();
-        setMessage(err.error || "Failed to update product.");
-      }
-    } catch {
-      setMessage("Server error when updating product.");
+      toast.success("Product updated successfully!");
+      resetForm();
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.message || "Failed to update product.");
+      console.error("Update product error:", err);
     }
   };
 
@@ -240,27 +264,54 @@ const ProductManagement = () => {
   const deleteProduct = async (id) => {
     if (!window.confirm("Are you sure to delete this product?")) return;
     try {
-      const res = await fetch(`${config.API_BASE}/products/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setMessage("Product deleted successfully.");
-        fetchProducts();
-      } else {
-        setMessage("Failed to delete product.");
-      }
-    } catch {
-      setMessage("Server error when deleting product.");
+      await apiService.delete(`/products/${id}`);
+
+      toast.success("Product deleted successfully!");
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete product.");
+      console.error("Delete product error:", err);
     }
+  };
+
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (product) => {
+    setProductToDelete(product);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      await apiService.delete(`/products/${productToDelete._id}`);
+      toast.success("Product deleted successfully!");
+      fetchProducts();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete product.");
+      console.error("Delete product error:", err);
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setProductToDelete(null);
+    }
+  };
+
+  // Close delete modal
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setProductToDelete(null);
   };
 
   // ENABLE edit mode
   const editProduct = (p) => {
-    setCompany(p.company);
+    const productDistributorId = typeof p.distributorId === 'object' ? p.distributorId._id : p.distributorId;
+    setSelectedDistributorId(productDistributorId);
     setProductName(p.name);
-    setQuantity(p.quantity);
-    setUnit(p.unit);
+    setProductQuantity(p.productQuantity);
+    setProductUnit(p.productUnit);
     setCostPerTub(p.costPerTub);
     setCostPerPacket(p.costPerPacket);
     setPacketsPerTub(p.packetsPerTub);
@@ -268,14 +319,17 @@ const ProductManagement = () => {
     setImageFile(null);
     setEditProductId(p._id);
     setShowAddForm(true);
-    formRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll to the form after a short delay to ensure it's rendered
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const resetForm = () => {
-    setCompany("");
+    setSelectedDistributorId("");
     setProductName("");
-    setQuantity("");
-    setUnit("ml");
+    setProductQuantity("");
+    setProductUnit("ml");
     setCostPerTub("");
     setCostPerPacket("");
     setPacketsPerTub("");
@@ -284,9 +338,30 @@ const ProductManagement = () => {
     setEditProductId(null);
   };
 
-  // Get unique companies for filter
-  const getUniqueCompanies = () => {
-    return [...new Set(products.map(p => p.company))].sort();
+  // Get unique distributors for filter
+  const getUniqueDistributors = () => {
+    return distributors.map(dist => ({
+      _id: dist._id,
+      name: dist.companyName
+    }));
+  };
+
+  // Get distributor name by ID
+  const getDistributorName = (distributorId) => {
+    // Handle case where distributorId might be a populated object
+    let actualDistributorId = distributorId;
+    if (distributorId && typeof distributorId === 'object' && distributorId._id) {
+      actualDistributorId = distributorId._id;
+    }
+    
+    const distributor = distributors.find(d => d._id === actualDistributorId);
+    
+    // If distributorId is a populated object, return the company name directly
+    if (distributorId && typeof distributorId === 'object' && distributorId.companyName) {
+      return distributorId.companyName;
+    }
+    
+    return distributor ? distributor.companyName : 'Unknown';
   };
 
   return (
@@ -295,9 +370,9 @@ const ProductManagement = () => {
       <div className="row mb-4">
         <div className="col-12">
           <div className="d-flex align-items-center">
-            <div 
+            <div
               className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
-              style={{width: '60px', height: '60px'}}
+              style={{ width: '60px', height: '60px' }}
             >
               <i className="fas fa-box fa-lg text-white"></i>
             </div>
@@ -315,49 +390,65 @@ const ProductManagement = () => {
       <div className="row mb-4">
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-warning">
-            <div className="card-body text-center">
-              <div className="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-boxes text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-boxes text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Products</h6>
+                  <h4 className="mb-0 fw-bold text-warning">{summaryStats.totalProducts}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-warning mb-1">{summaryStats.totalProducts}</h4>
-              <p className="text-muted mb-0">Total Products</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-info">
-            <div className="card-body text-center">
-              <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-building text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-truck text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Distributors</h6>
+                  <h4 className="mb-0 fw-bold text-info">{summaryStats.totalDistributors}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-info mb-1">{summaryStats.totalCompanies}</h4>
-              <p className="text-muted mb-0">Total Companies</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-success">
-            <div className="card-body text-center">
-              <div className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-rupee-sign text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-rupee-sign text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Value</h6>
+                  <h4 className="mb-0 fw-bold text-success">₹{summaryStats.totalValue.toFixed(2)}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-success mb-1">₹{summaryStats.totalValue.toFixed(2)}</h4>
-              <p className="text-muted mb-0">Total Value</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
           <div className="card border shadow-sm h-100 border-top border-4 border-primary">
-            <div className="card-body text-center">
-              <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
-                   style={{width: '50px', height: '50px'}}>
-                <i className="fas fa-layer-group text-white"></i>
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-layer-group text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Packets</h6>
+                  <h4 className="mb-0 fw-bold text-primary">{summaryStats.totalPackets}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-primary mb-1">{summaryStats.totalPackets}</h4>
-              <p className="text-muted mb-0">Total Packets</p>
             </div>
           </div>
         </div>
@@ -368,8 +459,8 @@ const ProductManagement = () => {
         <div className="col-12">
           <div className="card border shadow-sm">
             <div className="card-body">
-              <div className="row g-3">
-                <div className="col-lg-4 col-md-6">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
                   <div className="position-relative">
                     <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input
@@ -378,37 +469,52 @@ const ProductManagement = () => {
                       placeholder="Search products..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '200px' }}
                     />
                   </div>
-                </div>
-                <div className="col-lg-3 col-md-6">
                   <select
                     className="form-select"
-                    value={selectedCompany}
-                    onChange={(e) => setSelectedCompany(e.target.value)}
+                    value={selectedDistributorFilter}
+                    onChange={(e) => setSelectedDistributorFilter(e.target.value)}
+                    style={{ width: '150px' }}
                   >
-                    <option value="">All Companies</option>
-                    {getUniqueCompanies().map(company => (
-                      <option key={company} value={company}>{company}</option>
+                    <option value="">All Distributors</option>
+                    {getUniqueDistributors().map(distributor => (
+                      <option key={distributor._id} value={distributor._id}>{distributor.name}</option>
                     ))}
                   </select>
-                </div>
-                <div className="col-lg-3 col-md-6">
                   <select
                     className="form-select"
                     value={selectedUnit}
                     onChange={(e) => setSelectedUnit(e.target.value)}
+                    style={{ width: '150px' }}
                   >
                     <option value="">All Units</option>
                     {units.map(unit => (
                       <option key={unit} value={unit}>{unit.toUpperCase()}</option>
                     ))}
                   </select>
-                </div>
-                <div className="col-lg-2 col-md-6">
-                  <button className="btn btn-outline-primary w-100" onClick={exportToCSV}>
+                  <button className="btn btn-outline-primary" onClick={exportToCSV}>
                     <i className="fas fa-download me-2"></i>
                     Export
+                  </button>
+                </div>
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="fas fa-th-large me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="fas fa-table me-2"></i>
+                    Table
                   </button>
                 </div>
               </div>
@@ -417,51 +523,27 @@ const ProductManagement = () => {
         </div>
       </div>
 
-      {/* View Mode Toggle */}
-      <div className="row mb-3">
-        <div className="col-12">
-          <div className="d-flex justify-content-center">
-            <div className="btn-group" role="group">
-              <button
-                type="button"
-                className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('cards')}
-              >
-                <i className="fas fa-th-large me-2"></i>
-                Cards
-              </button>
-              <button
-                type="button"
-                className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('table')}
-              >
-                <i className="fas fa-table me-2"></i>
-                Table
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Message */}
-      {message && (
-        <div className="alert alert-info alert-dismissible fade show">
-          <i className="fas fa-info-circle me-2"></i>
-          {message}
-          <button type="button" className="btn-close" onClick={() => setMessage("")}></button>
-        </div>
-      )}
-
-      {/* Add Product Button */}
+      {/* Enhanced Add Product Button Section */}
       <div className="row mb-4">
-        <div className="col-12">
-          <button 
-            className="btn btn-success"
+        <div className="col-12 text-center">
+          <button
+            className="btn btn-primary btn-lg px-5 py-3 fw-bold fs-5 shadow"
+            style={{
+              borderRadius: '50px',
+              minWidth: '250px'
+            }}
             onClick={() => setShowAddForm(!showAddForm)}
           >
-            <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-2`}></i>
+            <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-3 fs-4`}></i>
             {showAddForm ? 'Hide Add Form' : 'Add New Product'}
           </button>
+          
+          {!showAddForm && (
+            <p className="mt-3 mb-0 text-muted fs-6">
+              <i className="fas fa-info-circle me-2"></i>
+              Click to add a new product to your inventory
+            </p>
+          )}
         </div>
       </div>
 
@@ -479,16 +561,21 @@ const ProductManagement = () => {
               <div className="row g-3">
                 <div className="col-md-6">
                   <label className="form-label">
-                    <i className="fas fa-building me-1"></i>Company
+                    <i className="fas fa-truck me-1"></i>Distributor
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={company}
-                    onChange={(e) => setCompany(e.target.value)}
-                    placeholder="Enter company name"
+                  <select
+                    className="form-select"
+                    value={selectedDistributorId}
+                    onChange={(e) => setSelectedDistributorId(e.target.value)}
                     required
-                  />
+                  >
+                    <option value="">Select a distributor</option>
+                    {distributors.map(distributor => (
+                      <option key={distributor._id} value={distributor._id}>
+                        {distributor.companyName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">
@@ -505,25 +592,25 @@ const ProductManagement = () => {
                 </div>
                 <div className="col-md-4">
                   <label className="form-label">
-                    <i className="fas fa-weight me-1"></i>Quantity
+                    <i className="fas fa-weight me-1"></i>Product Quantity
                   </label>
                   <input
                     type="number"
                     className="form-control"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    placeholder="Enter quantity"
+                    value={productQuantity}
+                    onChange={(e) => setProductQuantity(e.target.value)}
+                    placeholder="Enter product quantity"
                     required
                   />
                 </div>
                 <div className="col-md-4">
                   <label className="form-label">
-                    <i className="fas fa-ruler me-1"></i>Unit
+                    <i className="fas fa-ruler me-1"></i>Product Unit
                   </label>
                   <select
                     className="form-select"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
+                    value={productUnit}
+                    onChange={(e) => setProductUnit(e.target.value)}
                     required
                   >
                     {units.map(u => (
@@ -590,27 +677,27 @@ const ProductManagement = () => {
                       <i className="fas fa-eye me-1"></i>Image Preview
                     </label>
                     <div className="text-center">
-                      <img 
-                        src={preview} 
-                        alt="Preview" 
+                      <img
+                        src={preview}
+                        alt="Preview"
                         className="img-thumbnail"
-                        style={{maxHeight: '200px'}}
+                        style={{ maxHeight: '200px' }}
                       />
                     </div>
                   </div>
                 )}
                 <div className="col-12">
                   <div className="d-flex gap-2">
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
                       className="btn btn-primary"
                     >
                       <i className={`fas ${editProductId ? 'fa-save' : 'fa-plus'} me-2`}></i>
                       {editProductId ? 'Update Product' : 'Add Product'}
                     </button>
                     {editProductId && (
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-secondary"
                         onClick={resetForm}
                       >
@@ -644,56 +731,81 @@ const ProductManagement = () => {
                   <div className="card border shadow-sm h-100">
                     <div className="card-header bg-primary text-white" >
                       <div className="d-flex align-items-center justify-content-between">
-                        <div className="d-flex align-items-center justify-content-center" 
-                             style={{width: '40px', height: '40px'}}> 
+                        <div className="d-flex align-items-center justify-content-center"
+                          style={{ width: '40px', height: '40px' }}>
                           <i className="fas fa-box text-white"></i>
                         </div>
-                        <span className="badge bg-white text-primary rounded-pill px-3 py-2">{product.unit}</span>
+                        <span className="badge bg-white text-primary rounded-pill px-3 py-2">{product.productUnit}</span>
                       </div>
                     </div>
                     <div className="card-body">
                       <div className="text-center mb-3">
-                        <img 
-                          src={getImageUrl(product.imageUrl)} 
+                        <img
+                          src={getImageUrl(product.imageUrl)}
                           alt={product.name}
                           className="img-fluid rounded"
-                          style={{maxHeight: '150px', width: 'auto'}}
+                          style={{ maxHeight: '150px', width: 'auto' }}
                         />
                       </div>
-                      <h6 className="card-title fw-bold">{product.name}</h6>
-                      <div className="mb-3">
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-building text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Company:</span>
-                          <span className="fw-medium">{product.company}</span>
+                      <h6 className="card-title fw-bold text-center mb-3">{product.name}</h6>
+                      
+                      <div className="row g-2 mb-3">
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-truck text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Company Name</small>
+                              <span className="fw-semibold">{getDistributorName(product.distributorId)}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-weight text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Quantity:</span>
-                          <span className="fw-medium">{product.quantity} {product.unit}</span>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-weight text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Product Quantity</small>
+                              <span className="fw-semibold">{product.productQuantity} {product.productUnit}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-rupee-sign text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Cost Per Tub:</span>
-                          <span className="fw-medium">₹{product.costPerTub}</span>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-rupee-sign text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Cost Per Tub</small>
+                              <span className="fw-semibold">₹{product.costPerTub}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-rupee-sign text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Cost Per Packet:</span>
-                          <span className="fw-medium">₹{product.costPerPacket}</span>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-rupee-sign text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Cost Per Packet</small>
+                              <span className="fw-semibold">₹{product.costPerPacket}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-layer-group text-muted me-2" style={{width: '16px'}}></i>
-                          <span className="text-muted me-2">Packets Per Tub:</span>
-                          <span className="fw-medium">{product.packetsPerTub}</span>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-layer-group text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Packets Per Tub</small>
+                              <span className="fw-semibold">{product.packetsPerTub}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      
+
                       <div className="d-flex gap-2">
                         <button className="btn btn-outline-warning btn-sm flex-fill" onClick={() => editProduct(product)} title="Edit product">
                           <i className="fas fa-edit me-1"></i>Edit
                         </button>
-                        <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => deleteProduct(product._id)} title="Delete product">
+                        <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => showDeleteConfirmation(product)} title="Delete product">
                           <i className="fas fa-trash me-1"></i>Delete
                         </button>
                       </div>
@@ -714,9 +826,9 @@ const ProductManagement = () => {
                       <tr>
                         <th>Image</th>
                         <th>Product Name</th>
-                        <th>Company</th>
-                        <th>Quantity</th>
-                        <th>Unit</th>
+                        <th>Distributor</th>
+                        <th>Product Quantity</th>
+                        <th>Product Unit</th>
                         <th>Cost Per Tub</th>
                         <th>Cost Per Packet</th>
                         <th>Packets Per Tub</th>
@@ -727,11 +839,11 @@ const ProductManagement = () => {
                       {getFilteredProducts().map(product => (
                         <tr key={product._id}>
                           <td>
-                            <img 
-                              src={getImageUrl(product.imageUrl)} 
+                            <img
+                              src={getImageUrl(product.imageUrl)}
                               alt={product.name}
                               className="rounded"
-                              style={{width: '50px', height: '50px', objectFit: 'cover'}}
+                              style={{ width: '50px', height: '50px', objectFit: 'cover' }}
                             />
                           </td>
                           <td>
@@ -742,19 +854,19 @@ const ProductManagement = () => {
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
-                              <i className="fas fa-building me-2 text-muted"></i>
-                              {product.company}
+                              <i className="fas fa-truck me-2 text-muted"></i>
+                              {getDistributorName(product.distributorId)}
                             </div>
                           </td>
                           <td>
                             <div className="d-flex align-items-center">
                               <i className="fas fa-weight me-2 text-muted"></i>
-                              {product.quantity}
+                              {product.productQuantity}
                             </div>
                           </td>
                           <td>
                             <span className="badge bg-info">
-                              {product.unit.toUpperCase()}
+                              {product.productUnit.toUpperCase()}
                             </span>
                           </td>
                           <td>
@@ -780,7 +892,7 @@ const ProductManagement = () => {
                               <button className="btn btn-sm btn-outline-warning" onClick={() => editProduct(product)} title="Edit product">
                                 <i className="fas fa-edit"></i>
                               </button>
-                              <button className="btn btn-sm btn-outline-danger" onClick={() => deleteProduct(product._id)} title="Delete product">
+                              <button className="btn btn-sm btn-outline-danger" onClick={() => showDeleteConfirmation(product)} title="Delete product">
                                 <i className="fas fa-trash"></i>
                               </button>
                             </div>
@@ -795,6 +907,51 @@ const ProductManagement = () => {
           )}
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        show={showDeleteModal}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        title="Confirm Delete Product"
+        message="Are you sure you want to delete this product?"
+        itemName={productToDelete?.name}
+        itemImage={productToDelete ? getImageUrl(productToDelete.imageUrl) : null}
+        itemDetails={
+          productToDelete ? (
+            <>
+              <p className="text-muted mb-1">
+                <i className="fas fa-truck me-1"></i>
+                {getDistributorName(productToDelete.distributorId)}
+              </p>
+              <p className="text-muted mb-1">
+                <i className="fas fa-weight me-1"></i>
+                {productToDelete.productQuantity} {productToDelete.productUnit}
+              </p>
+              <p className="text-muted mb-0">
+                <i className="fas fa-rupee-sign me-1"></i>
+                ₹{productToDelete.costPerTub} per tub
+              </p>
+            </>
+          ) : null
+        }
+        loading={deleteLoading}
+        confirmText="Delete Product"
+      />
+
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };

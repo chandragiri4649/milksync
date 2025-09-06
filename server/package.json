@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "seed:admin": "node seed/createAdmin.js",
-    "seed:reset-admin": "node seed/resetAdminPassword.js"
+    "seed:reset-admin": "node seed/resetAdminPassword.js",
+    "migrate:product-fields": "node scripts/migrate-product-fields.js"
   },
   "keywords": [],
   "author": "",

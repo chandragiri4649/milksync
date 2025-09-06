@@ -7,7 +7,7 @@ const mongoose = require("mongoose");
 // Create order
 exports.createOrder = async (req, res) => {
   try {
-    const { distributorId, orderDate, items, customerName, customerPhone } = req.body;
+    const { distributorId, orderDate, items, customerPhone } = req.body;
     
     // Debug logging
     console.log('createOrder received:', {
@@ -18,12 +18,17 @@ exports.createOrder = async (req, res) => {
       body: req.body
     });
 
-    const userId = (req.user && (req.user._id || req.user.id)) || null;
+    // Use session-based authentication instead of JWT
+    const userId = req.session?.userId || (req.user && (req.user._id || req.user.id)) || null;
+    const userRole = req.session?.userRole || req.user?.role || null;
     
     // Debug logging for authentication
     console.log('Authentication debug:', {
+      sessionUserId: req.session?.userId,
+      sessionUserRole: req.session?.userRole,
       reqUser: req.user,
       userId,
+      userRole,
       hasUserId: !!userId
     });
     
@@ -33,18 +38,17 @@ exports.createOrder = async (req, res) => {
 
     // Determine the user model based on the user's role
     let userModel = 'Staff'; // Default to Staff
-    if (req.user.role === 'admin') {
+    if (userRole === 'admin') {
       userModel = 'Admin';
-    } else if (req.user.role === 'staff') {
+    } else if (userRole === 'staff') {
       userModel = 'Staff';
     }
     
     // Debug logging for user role and model
     console.log('User role and model determination:', {
-      userId: req.user._id,
-      userRole: req.user.role,
-      userModel: userModel,
-      reqUserKeys: Object.keys(req.user)
+      userId: userId,
+      userRole: userRole,
+      userModel: userModel
     });
 
     if (!distributorId || !orderDate || !items || !Array.isArray(items) || items.length === 0) {
@@ -115,7 +119,8 @@ exports.createOrder = async (req, res) => {
           details: { orderDate, type: typeof orderDate }
         });
       }
-      selectedDate.setHours(0, 0, 0, 0);
+      // Don't set hours to 0, preserve the user's selected date as-is
+      // selectedDate.setHours(0, 0, 0, 0);
     } catch (err) {
       console.error('Date parsing error:', err);
       return res.status(400).json({ 
@@ -129,15 +134,15 @@ exports.createOrder = async (req, res) => {
       today: today.toISOString(),
       selectedDate: selectedDate.toISOString(),
       orderDate: orderDate,
-      isSelectedDateValid: selectedDate > today,
+      isSelectedDateValid: selectedDate >= today,
       todayTime: today.getTime(),
       selectedTime: selectedDate.getTime(),
       difference: selectedDate.getTime() - today.getTime()
     });
 
-    if (selectedDate <= today) {
+    if (selectedDate < today) {
       return res.status(400).json({ 
-        error: "Orders can only be placed from tomorrow onwards",
+        error: "Orders can only be placed from today onwards",
         details: {
           today: today.toISOString(),
           selectedDate: selectedDate.toISOString(),
@@ -150,8 +155,8 @@ exports.createOrder = async (req, res) => {
       userId,
       userModel, // Add the user model type
       distributorId,
-      orderDate: selectedDate,
-      customerName: customerName || 'Customer',
+      orderDate: new Date(), // Order creation date (today)
+      deliveryDate: selectedDate, // The date user selected for delivery (from request)
       customerPhone: customerPhone || '',
       items,
       status: "pending",
@@ -164,6 +169,7 @@ exports.createOrder = async (req, res) => {
       userModel: newOrder.userModel,
       distributorId: newOrder.distributorId,
       orderDate: newOrder.orderDate,
+      deliveryDate: newOrder.deliveryDate,
       itemsCount: newOrder.items.length
     });
 
@@ -175,66 +181,6 @@ exports.createOrder = async (req, res) => {
       userId: newOrder.userId,
       userModel: newOrder.userModel
     });
-
-    // Generate bill automatically when order is created
-    try {
-      const billItems = [];
-      let totalBillAmount = 0;
-
-      for (const item of items) {
-        const product = await Product.findById(item.productId);
-        if (!product) {
-          console.log(`⚠️ Product not found for item: ${item.productId}`);
-          continue;
-        }
-
-        // 🆕 Use costPerTub directly, with fallback calculation
-        let costPerTub = product.costPerTub;
-        if (!costPerTub && product.costPerPacket && product.packetsPerTub) {
-          costPerTub = product.costPerPacket * product.packetsPerTub;
-          console.log(`�� Calculated costPerTub for ${product.name}: ${costPerTub}`);
-        }
-        if (!costPerTub) {
-          console.log(`⚠️ No cost information for product: ${product.name}`);
-          costPerTub = 0;
-        }
-
-        const totalCost = costPerTub * item.quantity;
-        totalBillAmount += totalCost;
-
-        billItems.push({
-          productId: product._id,
-          productName: product.name,
-          quantity: item.quantity,
-          unit: item.unit || 'tubs',
-          price: costPerTub,
-          total: totalCost
-        });
-      }
-      // Create bill with simple structure
-      const bill = new Bill({
-        distributorId: distributorId,
-        orderId: newOrder._id,
-        billNumber: `BILL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-        billDate: new Date(),
-        customerName: customerName || 'Customer',
-        customerPhone: customerPhone || '',
-        items: billItems,
-        subtotal: totalBillAmount,
-        totalAmount: totalBillAmount,
-        paymentMethod: 'pending',
-        status: 'pending',
-        locked: false // Bill is editable until order is delivered
-      });
-
-      await bill.save();
-      console.log(`✅ Bill generated automatically for order ${newOrder._id} with amount: ₹${totalBillAmount}`);
-    } catch (billError) {
-      console.error('❌ Error generating bill:', billError);
-      // Don't fail the order creation if bill generation fails
-    }
-    
-
 
     res.status(201).json({ message: "Order placed successfully", order: newOrder });
   } catch (err) {
@@ -252,9 +198,16 @@ exports.createOrder = async (req, res) => {
 // Get orders by logged-in user
 exports.getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user._id })
-      .populate("distributorId", "name company")
-      .populate("items.productId", "name company quantity unit imageUrl costPerTub costPerPacket packetsPerTub")
+    // Use session-based authentication instead of JWT
+    const userId = req.session?.userId || (req.user && (req.user._id || req.user.id)) || null;
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated: missing user id" });
+    }
+    
+    const orders = await Order.find({ userId: userId })
+      .populate("distributorId", "distributorName companyName")
+      .populate("items.productId", "name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub")
       .sort({ createdAt: -1 });
 
     // Manually populate user information since we have dynamic references
@@ -307,8 +260,8 @@ exports.getMyOrders = async (req, res) => {
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find({})
-      .populate("distributorId", "name company")
-      .populate("items.productId", "name company quantity unit imageUrl costPerTub costPerPacket packetsPerTub")
+      .populate("distributorId", "distributorName companyName")
+      .populate("items.productId", "name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub")
       .sort({ createdAt: -1 });
 
     // Manually populate user information since we have dynamic references
@@ -360,6 +313,14 @@ exports.getAllOrders = async (req, res) => {
 // Delete order
 exports.deleteOrder = async (req, res) => {
   try {
+    // Use session-based authentication instead of JWT
+    const userId = req.session?.userId || (req.user && (req.user._id || req.user.id)) || null;
+    const userRole = req.session?.userRole || req.user?.role || null;
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated: missing user id" });
+    }
+    
     // Find the order first
     const order = await Order.findById(req.params.id);
     if (!order) {
@@ -372,7 +333,7 @@ exports.deleteOrder = async (req, res) => {
     }
 
     // Allow deletion if user is admin/staff (can delete any order) OR if it's their own order
-    if (req.user.role === 'admin' || req.user.role === 'staff' || order.userId.toString() === req.user._id.toString()) {
+    if (userRole === 'admin' || userRole === 'staff' || order.userId.toString() === userId.toString()) {
       await Order.deleteOne({ _id: req.params.id });
       res.json({ message: "Order deleted successfully" });
     } else {
@@ -387,6 +348,14 @@ exports.deleteOrder = async (req, res) => {
 // Update order
 exports.updateOrder = async (req, res) => {
   try {
+    // Use session-based authentication instead of JWT
+    const userId = req.session?.userId || (req.user && (req.user._id || req.user.id)) || null;
+    const userRole = req.session?.userRole || req.user?.role || null;
+    
+    if (!userId) {
+      return res.status(401).json({ error: "Not authenticated: missing user id" });
+    }
+    
     const { orderDate, items } = req.body;
     
     // Find the order first
@@ -401,12 +370,37 @@ exports.updateOrder = async (req, res) => {
     }
 
     // Allow update if user is admin/staff (can update any order) OR if it's their own order
-    if (req.user.role === 'admin' || req.user.role === 'staff' || order.userId.toString() === req.user._id.toString()) {
+    if (userRole === 'admin' || userRole === 'staff' || order.userId.toString() === userId.toString()) {
       order.orderDate = orderDate || order.orderDate;
       order.items = items || order.items;
       await order.save();
-      await order.populate("distributorId items.productId");
-      res.json(order);
+      
+      // Populate the order with all necessary fields
+      await order.populate("distributorId", "distributorName companyName");
+      await order.populate("items.productId", "name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub");
+      
+      // Manually populate user information since we have dynamic references
+      let userInfo = null;
+      try {
+        if (order.userModel === 'Admin') {
+          const Admin = require('../models/Admin');
+          userInfo = await Admin.findById(order.userId).select('username email');
+        } else if (order.userModel === 'Staff') {
+          const Staff = require('../models/Staff');
+          userInfo = await Staff.findById(order.userId).select('username email');
+        }
+      } catch (err) {
+        console.error('Error populating user info for updated order:', order._id, err);
+        userInfo = { username: 'Unknown User', email: 'unknown@example.com' };
+      }
+      
+      // Return the order with populated user information
+      const orderWithUserInfo = {
+        ...order.toObject(),
+        userId: userInfo
+      };
+      
+      res.json(orderWithUserInfo);
     } else {
       res.status(403).json({ error: "You can only update your own orders" });
     }
@@ -434,7 +428,7 @@ exports.markOrderDelivered = async (req, res) => {
     // Load order with product details for bill generation
     console.log(`📋 [${requestId}] Loading order details...`);
     let order = await Order.findById(id)
-      .populate("distributorId", "_id name distributorName")
+      .populate("distributorId", "_id distributorName companyName")
       .populate("items.productId", "name costPerTub costPerPacket packetsPerTub");
 
     if (!order) {
@@ -454,7 +448,7 @@ exports.markOrderDelivered = async (req, res) => {
 
     // Refresh order data to ensure we have the latest status
     order = await Order.findById(id)
-      .populate("distributorId", "_id name distributorName")
+      .populate("distributorId", "_id distributorName companyName")
       .populate("items.productId", "name costPerTub costPerPacket packetsPerTub");
     
     // Check again after refresh
@@ -467,12 +461,29 @@ exports.markOrderDelivered = async (req, res) => {
       return res.status(400).json({ error: "Order became locked/delivered during processing" });
     }
 
+    if (!order.distributorId) {
+      console.log('❌ Order has no distributor assigned:', order._id);
+      return res.status(400).json({ error: "Order has no distributor assigned" });
+    }
+
     console.log('✅ Order found:', {
       orderId: order._id,
       status: order.status,
       locked: order.locked,
-      distributorId: order.distributorId._id
+      distributorId: order.distributorId?._id,
+      itemsCount: order.items?.length,
+      items: order.items?.map(item => ({
+        productId: item.productId?._id,
+        productName: item.productId?.name,
+        quantity: item.quantity,
+        unit: item.unit
+      }))
     });
+
+    if (!order.items || order.items.length === 0) {
+      console.log('❌ Order has no items:', order._id);
+      return res.status(400).json({ error: "Order has no items" });
+    }
 
     // Find existing bill or generate one if it doesn't exist
     console.log('🔍 Checking for existing bill...');
@@ -512,7 +523,7 @@ exports.markOrderDelivered = async (req, res) => {
         productId: product._id,
         productName: product.name,
         quantity: item.quantity,
-        unit: item.unit || 'tubs',
+        unit: item.unit || 'tub',
         price: costPerTub,
         total: totalCost
       });
@@ -554,38 +565,6 @@ exports.markOrderDelivered = async (req, res) => {
         // Generate bill automatically
         // Note: billItems and originalOrderTotal are already calculated above
 
-        for (const item of order.items) {
-          const product = item.productId;
-          if (!product) {
-            console.log('⚠️ Product not found for item, skipping:', item);
-            continue;
-          }
-
-          // 🆕 Use costPerTub directly, with fallback calculation
-          let costPerTub = product.costPerTub;
-          if (!costPerTub && product.costPerPacket && product.packetsPerTub) {
-            costPerTub = product.costPerPacket * product.packetsPerTub;
-            console.log(`�� Calculated costPerTub for ${product.name}: ${costPerTub}`);
-          }
-          
-          if (!costPerTub) {
-            console.log('⚠️ No cost information for product:', product.name);
-            costPerTub = 0; // Default to 0 instead of failing
-          }
-
-          const totalCost = costPerTub * item.quantity;
-          totalBillAmount += totalCost;
-
-          billItems.push({
-            productId: product._id,
-            productName: product.name,
-            quantity: item.quantity,
-            unit: item.unit || 'tubs',
-            price: costPerTub,
-            total: totalCost
-          });
-        }
-
         // Calculate final bill amount: Original Order Total - Damaged Cost
         let finalBillAmount = originalOrderTotal - totalDamagedCost;
         
@@ -619,8 +598,8 @@ exports.markOrderDelivered = async (req, res) => {
           locked: false,
           updatedBy: updatedBy || {
             role: 'admin',
-            id: req.user._id,
-            name: req.user.username || req.user.name || 'Admin'
+            id: req.currentUser?._id || req.session?.userId || 'unknown',
+            name: req.currentUser?.username || req.currentUser?.name || req.session?.username || 'Admin'
           },
           updatedAt: new Date()
         });
@@ -651,19 +630,19 @@ exports.markOrderDelivered = async (req, res) => {
         finalBillAmount = 0;
       }
       
-             bill.items = billItems;
-       bill.damagedProducts = damagedBillItems;
-       bill.subtotal = originalOrderTotal;
-       bill.totalDamagedCost = totalDamagedCost;
-       bill.totalAmount = finalBillAmount;
-       bill.updatedBy = updatedBy || {
-         role: 'admin',
-         id: req.user._id,
-         name: req.user.username || req.user.name || 'Admin'
-       };
-       bill.updatedAt = new Date();
-       
-       await bill.save();
+      bill.items = billItems;
+      bill.damagedProducts = damagedBillItems;
+      bill.subtotal = originalOrderTotal;
+      bill.totalDamagedCost = totalDamagedCost;
+      bill.totalAmount = finalBillAmount;
+      bill.updatedBy = updatedBy || {
+        role: 'admin',
+        id: req.currentUser?._id || req.session?.userId || 'unknown',
+        name: req.currentUser?.username || req.currentUser?.name || req.session?.username || 'Admin'
+      };
+      bill.updatedAt = new Date();
+      
+      await bill.save();
       console.log('✅ Existing bill updated with damaged products');
     }
 
@@ -702,46 +681,53 @@ exports.markOrderDelivered = async (req, res) => {
     order.status = "delivered";
     order.locked = true;
     
-         // Save damaged products information and final bill amount
-     if (damagedProducts && Array.isArray(damagedProducts) && damagedProducts.length > 0) {
-       order.damagedProducts = damagedBillItems;
-       order.totalDamagedCost = totalDamagedCost;
-       console.log(`📦 [${requestId}] Saved damaged products information to order`);
-     }
-     
-     // Always save the final bill amount to the order
-     order.finalBillAmount = bill.totalAmount;
-     console.log(`💰 [${requestId}] Saved final bill amount to order: ₹${bill.totalAmount}`);
-     
-     // Save who updated the order and when
-     order.updatedBy = updatedBy || {
-       role: 'admin',
-       id: req.user._id,
-       name: req.user.username || req.user.name || 'Admin'
-     };
-     order.updatedAt = new Date();
-     console.log(`👤 [${requestId}] Saved update information to order:`, order.updatedBy);
-     
-     await order.save();
+    // Save damaged products information and final bill amount
+    if (damagedProducts && Array.isArray(damagedProducts) && damagedProducts.length > 0) {
+      order.damagedProducts = damagedBillItems;
+      order.totalDamagedCost = totalDamagedCost;
+      console.log(`📦 [${requestId}] Saved damaged products information to order`);
+    }
+    
+    // Always save the final bill amount to the order
+    order.finalBillAmount = bill.totalAmount;
+    console.log(`💰 [${requestId}] Saved final bill amount to order: ₹${bill.totalAmount}`);
+    
+    // Save who updated the order and when
+    order.updatedBy = updatedBy || {
+      role: 'admin',
+      id: req.currentUser?._id || req.session?.userId || 'unknown',
+      name: req.currentUser?.username || req.currentUser?.name || req.session?.username || 'Admin'
+    };
+    order.updatedAt = new Date();
+    console.log(`👤 [${requestId}] Saved update information to order:`, order.updatedBy);
+    
+    await order.save();
 
     console.log('✅ Order marked as delivered successfully');
-         res.json({
-       message: "Order marked as delivered. Bill generated (if needed), wallet credited, and records locked.",
-       orderId: order._id,
-       billId: bill._id,
-       creditedAmount: bill.totalAmount,
-       walletBalance: updatedDistributor.walletBalance,
-       billGenerated: !bill.createdAt || new Date() - bill.createdAt < 1000, // Indicates if bill was just created
-       damagedProducts: order.damagedProducts || [],
-       totalDamagedCost: order.totalDamagedCost || 0,
-       originalBillAmount: originalOrderTotal,
-       finalBillAmount: bill.totalAmount,
-       updatedBy: order.updatedBy,
-       updatedAt: order.updatedAt
-     });
+    res.json({
+      message: "Order marked as delivered. Bill generated (if needed), wallet credited, and records locked.",
+      orderId: order._id,
+      billId: bill._id,
+      creditedAmount: bill.totalAmount,
+      walletBalance: updatedDistributor.walletBalance,
+      billGenerated: !bill.createdAt || new Date() - bill.createdAt < 1000, // Indicates if bill was just created
+      damagedProducts: order.damagedProducts || [],
+      totalDamagedCost: order.totalDamagedCost || 0,
+      originalBillAmount: originalOrderTotal,
+      finalBillAmount: bill.totalAmount,
+      updatedBy: order.updatedBy,
+      updatedAt: order.updatedAt
+    });
   } catch (err) {
     console.error('❌ Error in markOrderDelivered:', err);
     console.error('❌ Error stack:', err.stack);
+    console.error('❌ Request details:', {
+      id,
+      damagedProducts,
+      updatedBy,
+      session: req.session,
+      currentUser: req.currentUser
+    });
     const message = err?.message || "Failed to mark order delivered";
     return res.status(500).json({ error: message, details: err.message });
   }
@@ -749,6 +735,14 @@ exports.markOrderDelivered = async (req, res) => {
 
 exports.getTomorrowPendingOrders = async (req, res) => {
   try {
+    console.log("🔍 orderController - getTomorrowPendingOrders called");
+    console.log("🔍 orderController - Session data:", {
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      sessionExists: !!req.session,
+      sessionId: req.session?.id
+    });
+    
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
@@ -756,15 +750,45 @@ exports.getTomorrowPendingOrders = async (req, res) => {
     const dayAfterTomorrow = new Date(tomorrow);
     dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
 
-    const orders = await Order.find({
-      distributorId: req.user.id,
-      status: "pending",
-      orderDate: { $gte: tomorrow, $lt: dayAfterTomorrow }
-    }).populate("items.productId","name quantity unit company");
+    console.log("🔍 orderController - Date range:", {
+      tomorrow: tomorrow.toISOString(),
+      dayAfterTomorrow: dayAfterTomorrow.toISOString()
+    });
 
+    // Use session user ID instead of JWT user ID
+    const distributorId = req.session?.userId;
+    
+    if (!distributorId) {
+      console.log("❌ orderController - No distributor ID in session");
+      return res.status(401).json({ error: "Distributor not authenticated" });
+    }
+
+    console.log("🔍 orderController - Searching for orders with:", {
+      distributorId: distributorId,
+      status: "pending",
+      deliveryDateRange: `${tomorrow.toISOString()} to ${dayAfterTomorrow.toISOString()}`
+    });
+
+
+    // Filter by deliveryDate instead of orderDate since that's when the order needs to be delivered
+    const orders = await Order.find({
+      distributorId: distributorId,
+      status: "pending",
+      deliveryDate: { $gte: tomorrow, $lt: dayAfterTomorrow }
+    }).populate("items.productId","name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub");
+
+    console.log("✅ orderController - Found tomorrow orders:", orders.length);
+    console.log("✅ orderController - Orders details:", orders.map(order => ({
+      id: order._id,
+      orderDate: order.orderDate,
+      deliveryDate: order.deliveryDate,
+      status: order.status,
+      itemsCount: order.items?.length || 0
+    })));
+    
     res.json(orders);
   } catch (error) {
-    console.error("Error fetching tomorrow's pending orders:", error);
+    console.error("❌ orderController - Error fetching tomorrow's pending orders:", error);
     res.status(500).json({ error: "Failed to fetch tomorrow's orders" });
   }
 };
@@ -772,9 +796,17 @@ exports.getTomorrowPendingOrders = async (req, res) => {
 // Get all orders for a distributor
 exports.getDistributorOrders = async (req, res) => {
   try {
-    const distributorId = req.user.id;
+    console.log("🔍 orderController - getDistributorOrders called");
+    console.log("🔍 orderController - Session data:", {
+      userId: req.session?.userId,
+      userRole: req.session?.userRole
+    });
+    
+    // Use session user ID instead of JWT user ID
+    const distributorId = req.session?.userId;
     
     if (!distributorId) {
+      console.log("❌ orderController - No distributor ID in session");
       return res.status(401).json({ error: "Distributor ID not found" });
     }
 
@@ -782,7 +814,7 @@ exports.getDistributorOrders = async (req, res) => {
     const orders = await Order.find({
       distributorId: distributorId
     })
-    .populate("items.productId", "name quantity unit company costPerPacket packetsPerTub")
+    .populate("items.productId", "name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub")
     .populate("userId", "name username")
     .sort({ orderDate: -1, createdAt: -1 }); // Most recent first
 
@@ -821,8 +853,15 @@ exports.getDistributorOrders = async (req, res) => {
 // Confirm delivery by distributor
 exports.confirmDistributorDelivery = async (req, res) => {
   try {
+    console.log("🔍 orderController - confirmDistributorDelivery called");
+    console.log("🔍 orderController - Session data:", {
+      userId: req.session?.userId,
+      userRole: req.session?.userRole
+    });
+    
     const { orderId } = req.params;
-    const distributorId = req.user.id;
+    // Use session user ID instead of JWT user ID
+    const distributorId = req.session?.userId;
     const { deliveryDate, distributorNotes } = req.body;
 
     if (!orderId) {
@@ -833,7 +872,7 @@ exports.confirmDistributorDelivery = async (req, res) => {
     const order = await Order.findOne({
       _id: orderId,
       distributorId: distributorId
-    }).populate("items.productId", "name quantity unit company costPerPacket packetsPerTub");
+    }).populate("items.productId", "name productQuantity productUnit imageUrl costPerTub costPerPacket packetsPerTub");
 
     if (!order) {
       return res.status(404).json({ error: "Order not found or not assigned to you" });

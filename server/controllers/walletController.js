@@ -4,9 +4,12 @@ const walletService = require("../services/walletService");
 
 exports.getWallet = async (req, res) => {
   try {
+    console.log("🔍 walletController - getWallet called with distributor ID:", req.params.distributorId);
     const balance = await walletService.getWalletBalance(req.params.distributorId);
+    console.log("✅ walletController - Wallet balance retrieved:", balance);
     res.json({ walletBalance: balance });
   } catch (err) {
+    console.error("❌ walletController - Error getting wallet balance:", err.message);
     res.status(400).json({ error: err.message });
   }
 };

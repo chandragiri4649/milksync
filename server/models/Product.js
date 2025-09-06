@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
-  company: { type: String, required: true },
+  distributorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Distributor', required: true },
   name: { type: String, required: true },
-  quantity: { type: Number, required: true },
-  unit: { type: String, enum: ["ml", "kg", "gm"], required: true },
+  productQuantity: { type: Number, required: true },
+  productUnit: { type: String, enum: ["ml", "kg", "gm"], required: true },
   imageUrl: { type: String, required: true }, // path like "/uploads/filename.jpg"
   costPerTub: { type: Number, required: true }, // ADDED: Direct cost per tub
   costPerPacket: { type: Number, required: true }, // price of one packet

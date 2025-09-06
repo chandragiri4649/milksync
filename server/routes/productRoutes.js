@@ -17,6 +17,7 @@ router.put("/:id", isAuthenticated, hasRole('admin'), upload.single("image"), ha
 // Delete product (admin only)
 router.delete("/:id", isAuthenticated, hasRole('admin'), productController.deleteProduct);
 
-router.get("/company/:companyName", isAuthenticated, hasRole(['admin', 'staff']), productController.getProductsByCompany);
+// Get products by distributor (admin or staff)
+router.get("/distributor/:distributorId", isAuthenticated, hasRole(['admin', 'staff']), productController.getProductsByDistributor);
 
 module.exports = router;

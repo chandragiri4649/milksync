@@ -5,7 +5,6 @@ import apiService from "../../utils/apiService";
 export default function AmountCard({ distributorId, myWallet = false, tokenKey = "staffToken" }) {
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem(tokenKey); // tokenKey -> can be "staffToken" or "distributorToken"
 
   useEffect(() => {
     const fetchWalletBalance = async () => {
@@ -31,11 +30,11 @@ export default function AmountCard({ distributorId, myWallet = false, tokenKey =
   }, [distributorId, myWallet]);
 
   return (
-    <div className="mx-3 mx-md-auto my-3 bg-white rounded-4 p-4 shadow border border-2 border-light position-relative overflow-hidden w-100" style={{ maxWidth: '800px' }}>
+    <div className="mx-3 mx-md-auto my-2 bg-white rounded-4 p-3 shadow border border-2 border-light position-relative overflow-hidden w-100" style={{ maxWidth: '800px' }}>
       {/* Top accent border */}
       <div className="position-absolute top-0 start-0 end-0 bg-info border-info border-top border-3 rounded-top"></div>
       
-      <div className="text-muted fw-semibold text-uppercase mb-3 text-center position-relative fs-6">
+      <div className="text-muted fw-semibold text-uppercase mb-2 text-center position-relative small">
         <span>Amount due by dealer SVD Dairy Products</span>
       </div>
       

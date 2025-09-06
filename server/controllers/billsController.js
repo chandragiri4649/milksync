@@ -20,9 +20,17 @@ exports.getBillsByDistributor = async (req, res) => {
 // Get bills for a specific distributor (distributor view)
 exports.getDistributorBills = async (req, res) => {
   try {
-    const distributorId = req.user.id;
+    console.log("🔍 billsController - getDistributorBills called");
+    console.log("🔍 billsController - Session data:", {
+      userId: req.session?.userId,
+      userRole: req.session?.userRole
+    });
+    
+    // Use session user ID instead of JWT user ID
+    const distributorId = req.session?.userId;
     
     if (!distributorId) {
+      console.log("❌ billsController - No distributor ID in session");
       return res.status(401).json({ error: "Distributor ID not found" });
     }
 
@@ -48,6 +56,7 @@ exports.getDistributorBills = async (req, res) => {
         quantity: item.quantity,
         unit: item.unit,
         price: item.price,
+        pricePerUnit: item.price, // Add pricePerUnit for frontend compatibility
         total: item.total
       })),
       // Include damaged products information
@@ -125,7 +134,7 @@ exports.upsertBillFromOrder = async (req, res) => {
         productId: product._id,
         productName: product.name,
         quantity: item.quantity,
-        unit: item.unit || 'tubs',
+        unit: item.unit || 'tub',
         price: costPerTub,
         total: totalCost
       };

@@ -13,6 +13,18 @@ const DamageProductsModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Helper function to format product name with unit
+  const formatProductName = (product) => {
+    const name = product.name || "Unknown Product";
+    const unit = product.productUnit || "units";
+    const quantity = product.productQuantity || 0;
+    
+    if (unit && quantity > 0) {
+      return `${name} ${quantity}${unit}`;
+    }
+    return name;
+  };
+
   // Initialize damaged products when order changes
   useEffect(() => {
     if (order && order.items) {
@@ -25,7 +37,7 @@ const DamageProductsModal = ({
         
         return {
           productId: item.productId._id || item.productId,
-          productName: item.productId.name || 'Unknown Product',
+          productName: formatProductName(item.productId),
           orderedQuantity: item.quantity, // This is in tubs
           damagedQuantity: 0, // This will be in packets
           unit: item.unit,
@@ -131,9 +143,9 @@ const DamageProductsModal = ({
       
       let payload = {
         updatedBy: {
-          role: "admin",
-          id: user._id || user.id,
-          name: user.username || user.name || 'Admin'
+          role: user?.role || "admin",
+          id: user?._id || user?.id,
+          name: user?.username || user?.name || 'Admin'
         }
       };
 
@@ -170,6 +182,8 @@ const DamageProductsModal = ({
     console.log('First item productId:', order.items[0].productId);
     console.log('First item productId fields:', {
       name: order.items[0].productId?.name,
+      productQuantity: order.items[0].productId?.productQuantity,
+      productUnit: order.items[0].productId?.productUnit,
       costPerTub: order.items[0].productId?.costPerTub,
       costPerPacket: order.items[0].productId?.costPerPacket,
       packetsPerTub: order.items[0].productId?.packetsPerTub
@@ -180,12 +194,12 @@ const DamageProductsModal = ({
 
   return (
     <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-lg">
+      <div className="modal-dialog modal-xl">
         <div className="modal-content">
           <div className="modal-header bg-info text-white">
             <h5 className="modal-title">
               <i className="fas fa-exclamation-triangle me-2"></i>
-              Mark Order as Delivered
+              Mark Order as Delivered for {order.distributorId?.companyName || order.distributorId?.distributorName || 'Unknown Company'}
             </h5>
             <button 
               type="button" 
@@ -202,12 +216,20 @@ const DamageProductsModal = ({
                 <h6 className="fw-bold text-dark">Order Details</h6>
                 <p className="mb-1"><strong>Order ID:</strong> #{order._id.slice(-6)}</p>
                 <p className="mb-1"><strong>Date:</strong> {new Date(order.orderDate).toLocaleDateString()}</p>
-                <p className="mb-1"><strong>Distributor:</strong> {order.distributorId?.name || order.distributorId?.company || 'Unknown'}</p>
+                <p className="mb-1"><strong>Distributor:</strong> {order.distributorId?.distributorName || order.distributorId?.companyName || 'Unknown'}</p>
+                <p className="mb-1"><strong>Status:</strong> 
+                  <span className={`badge ${order.status === 'pending' ? 'bg-warning' : 'bg-success'} ms-2`}>
+                    {order.status}
+                  </span>
+                </p>
               </div>
               <div className="col-md-6">
-                <h6 className="fw-bold text-dark">Customer Info</h6>
-                <p className="mb-1"><strong>Name:</strong> {order.customerName || 'N/A'}</p>
-                <p className="mb-1"><strong>Phone:</strong> {order.customerPhone || 'N/A'}</p>
+                <h6 className="fw-bold text-dark">Order Summary</h6>
+                <p className="mb-1"><strong>Total Items:</strong> {order.items?.length || 0}</p>
+                <p className="mb-1"><strong>Placed By:</strong> {order.userId?.name || order.userId?.username || 'Unknown'}</p>
+                {order.deliveryDate && (
+                  <p className="mb-1"><strong>Delivery Date:</strong> {new Date(order.deliveryDate).toLocaleDateString()}</p>
+                )}
               </div>
             </div>
 
@@ -246,7 +268,7 @@ const DamageProductsModal = ({
                         </small>
                       </td>
                       <td className="text-center">{product.unit}</td>
-                      <td className="text-end">₹{product.price}</td>
+                      <td className="text-end">₹{product.price.toFixed(2)}</td>
                       <td className="text-end fw-bold">
                         ₹{(product.orderedQuantity * product.price).toFixed(2)}
                       </td>

@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const PaymentManagement = () => {
-  const { token } = useAuth();
   const [distributors, setDistributors] = useState([]);
   const [selectedDistributor, setSelectedDistributor] = useState("");
   const [amount, setAmount] = useState("");
@@ -11,8 +11,6 @@ const PaymentManagement = () => {
   const [receiptFile, setReceiptFile] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState("");
@@ -29,7 +27,7 @@ const PaymentManagement = () => {
       const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
-      setError(err.message || "Error fetching distributors");
+      toast.error(err.message || "Error fetching distributors");
     }
   }, []);
 
@@ -66,9 +64,19 @@ const PaymentManagement = () => {
   const getFilteredPaymentHistory = () => {
     let filtered = paymentHistory;
 
+    // Filter to show only today's payments
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    
+    filtered = filtered.filter(payment => {
+      const paymentDate = new Date(payment.paymentDate);
+      return paymentDate >= todayStart && paymentDate < todayEnd;
+    });
+
     if (searchTerm) {
       filtered = filtered.filter(payment => {
-        const distributorName = payment.distributorId?.distributorName || payment.distributorId?.name || '';
+        const distributorName = payment.distributorId?.distributorName || payment.distributorId?.companyName || '';
         const method = payment.paymentMethod || '';
         
         return distributorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,7 +124,7 @@ const PaymentManagement = () => {
   const exportToCSV = () => {
     const filteredPayments = getFilteredPaymentHistory();
     if (filteredPayments.length === 0) {
-      setMessage("No payments to export");
+      toast.warning("No payments to export");
       return;
     }
 
@@ -124,7 +132,7 @@ const PaymentManagement = () => {
       ["Date", "Distributor", "Payment Method", "Amount", "Status"],
       ...filteredPayments.map(payment => [
         new Date(payment.paymentDate).toLocaleDateString(),
-        payment.distributorId?.distributorName || payment.distributorId?.name || "Unknown",
+        payment.distributorId?.distributorName || payment.distributorId?.companyName || "Unknown",
         payment.paymentMethod || "N/A",
         `₹${payment.amount.toFixed(2)}`,
         "Completed"
@@ -138,7 +146,7 @@ const PaymentManagement = () => {
     a.download = `payment_data_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setMessage("Payment data exported successfully!");
+    toast.success("Payment data exported successfully!");
   };
 
   // Calculate summary statistics
@@ -156,19 +164,17 @@ const PaymentManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setMessage("");
 
     if (!selectedDistributor || !amount || !paymentMethod || !receiptFile) {
-      setError("All fields are required.");
+      toast.error("All fields are required.");
       return;
     }
     if (amount <= 0) {
-      setError("Enter a valid positive amount.");
+      toast.error("Enter a valid positive amount.");
       return;
     }
     if (walletBalance !== null && Number(amount) > walletBalance) {
-      setError("Payment amount exceeds wallet balance.");
+      toast.error("Payment amount exceeds wallet balance.");
       return;
     }
 
@@ -180,21 +186,8 @@ const PaymentManagement = () => {
       formData.append("paymentMethod", paymentMethod);
       formData.append("receiptImage", receiptFile);
 
-      const res = await fetch(`${config.API_BASE}/payments/create`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to record payment");
-      }
-
-      const data = await res.json();
-      setMessage(`✅ ${data.message || "Payment successfully recorded"}`);
+      const response = await apiService.post('/payments/create', formData);
+      toast.success(`✅ ${response.message || "Payment successfully recorded"}`);
 
       setAmount("");
       setReceiptFile(null);
@@ -203,7 +196,7 @@ const PaymentManagement = () => {
       fetchDistributors(); // Refresh wallet balances
       fetchPaymentHistory(); // Refresh payment history
     } catch (err) {
-      setError(`❌ ${err.message || "Error submitting payment"}`);
+      toast.error(`❌ ${err.message || "Error submitting payment"}`);
     } finally {
       setLoading(false);
     }
@@ -266,52 +259,64 @@ const PaymentManagement = () => {
         <div className="row mb-4">
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-success">
-              <div className="card-body text-center">
-                <div className="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-money-bill-wave text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-success mb-1">₹{summaryStats.totalAmount.toFixed(2)}</h4>
-                  <p className="mb-0 text-muted">Total Payments</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-success rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-money-bill-wave text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Total Payments</h6>
+                    <h4 className="mb-0 fw-bold text-success">₹{summaryStats.totalAmount.toFixed(2)}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-info">
-              <div className="card-body text-center">
-                <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-receipt text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-info mb-1">{summaryStats.totalTransactions}</h4>
-                  <p className="mb-0 text-muted">Total Transactions</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-receipt text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Total Transactions</h6>
+                    <h4 className="mb-0 fw-bold text-info">{summaryStats.totalTransactions}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-primary">
-              <div className="card-body text-center">
-                <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-mobile-alt text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-primary mb-1">{summaryStats.digitalPayments}</h4>
-                  <p className="mb-0 text-muted">Digital Payments</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-mobile-alt text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Digital Payments</h6>
+                    <h4 className="mb-0 fw-bold text-primary">{summaryStats.digitalPayments}</h4>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <div className="col-lg-3 col-md-6 mb-3">
             <div className="card border shadow-sm h-100 border-top border-4 border-warning">
-              <div className="card-body text-center">
-                <div className="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style={{width: '50px', height: '50px'}}>
-                  <i className="fas fa-users text-white"></i>
-                </div>
-                <div>
-                  <h4 className="fw-bold text-warning mb-1">{summaryStats.activeDistributors}</h4>
-                  <p className="mb-0 text-muted">Active Distributors</p>
+              <div className="card-body">
+                <div className="d-flex align-items-center">
+                  <div className="bg-warning rounded-circle d-flex align-items-center justify-content-center me-3"
+                    style={{ width: '50px', height: '50px' }}>
+                    <i className="fas fa-users text-white"></i>
+                  </div>
+                  <div>
+                    <h6 className="card-title text-muted mb-1">Active Distributors</h6>
+                    <h4 className="mb-0 fw-bold text-warning">{summaryStats.activeDistributors}</h4>
+                  </div>
                 </div>
               </div>
             </div>
@@ -323,8 +328,8 @@ const PaymentManagement = () => {
           <div className="col-12">
             <div className="card border shadow-sm">
               <div className="card-body">
-                <div className="row g-3">
-                  <div className="col-lg-3 col-md-6">
+                <div className="d-flex align-items-center justify-content-between gap-3">
+                  <div className="d-flex align-items-center gap-3">
                     <div className="position-relative">
                       <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                       <input
@@ -333,14 +338,14 @@ const PaymentManagement = () => {
                         placeholder="Search payments..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ width: '200px' }}
                       />
                     </div>
-                  </div>
-                  <div className="col-lg-2 col-md-6">
                     <select
                       className="form-select"
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
+                      style={{ width: '150px' }}
                     >
                       {monthOptions.map(option => (
                         <option key={option.value} value={option.value}>
@@ -348,12 +353,11 @@ const PaymentManagement = () => {
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div className="col-lg-2 col-md-6">
                     <select
                       className="form-select"
                       value={selectedPaymentMethodFilter}
                       onChange={(e) => setSelectedPaymentMethodFilter(e.target.value)}
+                      style={{ width: '150px' }}
                     >
                       {paymentMethodOptions.map(option => (
                         <option key={option.value} value={option.value}>
@@ -361,57 +365,34 @@ const PaymentManagement = () => {
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div className="col-lg-3 col-md-6">
-                    <button className="btn btn-outline-primary w-100" onClick={exportToCSV}>
-                      <i className="fas fa-download me-2"></i>
-                      Export CSV
+                    <button className="btn btn-outline-secondary" onClick={() => {
+                      setSearchTerm("");
+                      setSelectedMonth("");
+                      setSelectedPaymentMethodFilter("");
+                    }}>
+                      <i className="fas fa-refresh me-2"></i>
+                      Clear
                     </button>
                   </div>
-
+                  <div className="btn-group" role="group">
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('cards')}
+                    >
+                      <i className="fas fa-th-large me-2"></i>
+                      Cards
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                      onClick={() => setViewMode('table')}
+                    >
+                      <i className="fas fa-table me-2"></i>
+                      Table
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Feedback Messages */}
-        {error && (
-          <div className="alert alert-danger alert-dismissible fade show">
-            <i className="fas fa-exclamation-triangle me-2"></i>
-            {error}
-            <button type="button" className="btn-close" onClick={() => setError("")}></button>
-          </div>
-        )}
-        {message && (
-          <div className="alert alert-success alert-dismissible fade show">
-            <i className="fas fa-check-circle me-2"></i>
-            {message}
-            <button type="button" className="btn-close" onClick={() => setMessage("")}></button>
-          </div>
-        )}
-
-        {/* View Mode Toggle */}
-        <div className="row mb-3">
-          <div className="col-12">
-            <div className="d-flex justify-content-center">
-              <div className="btn-group" role="group">
-                <button
-                  type="button"
-                  className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                  onClick={() => setViewMode('cards')}
-                >
-                  <i className="fas fa-th-large me-2"></i>
-                  Cards
-                </button>
-                <button
-                  type="button"
-                  className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-                  onClick={() => setViewMode('table')}
-                >
-                  <i className="fas fa-table me-2"></i>
-                  Table
-                </button>
               </div>
             </div>
           </div>
@@ -443,7 +424,7 @@ const PaymentManagement = () => {
                     <option value="">-- Choose Distributor --</option>
                     {distributors.map((dist) => (
                       <option key={dist._id} value={dist._id}>
-                        {dist.distributorName || dist.name} (Wallet: ₹
+                        {dist.distributorName || dist.companyName} (Wallet: ₹
                         {dist.walletBalance ? dist.walletBalance.toFixed(2) : "0.00"})
                       </option>
                     ))}
@@ -507,26 +488,27 @@ const PaymentManagement = () => {
                   />
                 </div>
 
-                {/* Submit Button */}
-                <div className="col-12">
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary btn-sm w-100" 
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <i className="fas fa-spinner fa-spin me-2"></i>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-save me-2"></i>
-                        Submit Payment
-                      </>
-                    )}
-                  </button>
-                </div>
+                                 {/* Submit Button */}
+                 <div className="col-12 text-center">
+                   <button 
+                     type="submit" 
+                     className="btn btn-primary btn-sm" 
+                     disabled={loading}
+                     style={{ width: '150px' }}
+                   >
+                     {loading ? (
+                       <>
+                         <i className="fas fa-spinner fa-spin me-2"></i>
+                         Processing...
+                       </>
+                     ) : (
+                       <>
+                         <i className="fas fa-save me-2"></i>
+                         Submit Payment
+                       </>
+                     )}
+                   </button>
+                 </div>
               </div>
             </form>
           </div>
@@ -538,14 +520,14 @@ const PaymentManagement = () => {
             <div className="d-flex justify-content-between align-items-center">
               <h5 className="fw-bold text-dark mb-0">
                 <i className="fas fa-history me-2"></i>
-                Payment History ({getFilteredPaymentHistory().length})
+                Today's Payment History ({getFilteredPaymentHistory().length})
               </h5>
               <button
                 className="btn btn-outline-secondary"
                 onClick={() => setShowHistory(!showHistory)}
               >
                 <i className={`fas fa-${showHistory ? 'eye-slash' : 'eye'} me-1`}></i>
-                {showHistory ? 'Hide' : 'Show'} History
+                {showHistory ? 'Hide' : 'Show'} Today's History
               </button>
             </div>
           </div>
@@ -563,8 +545,8 @@ const PaymentManagement = () => {
           ) : getFilteredPaymentHistory().length === 0 ? (
             <div className="text-center py-5">
               <i className="fas fa-receipt fa-3x text-muted mb-3"></i>
-              <h6 className="text-muted">No payment records found</h6>
-              <p className="text-muted">No payments match the selected criteria.</p>
+              <h6 className="text-muted">No payment records found today</h6>
+              <p className="text-muted">No payments were made today or match the selected criteria.</p>
             </div>
           ) : viewMode === 'table' ? (
             // Table View
@@ -583,7 +565,7 @@ const PaymentManagement = () => {
                   {getFilteredPaymentHistory().map((payment) => (
                     <tr key={payment._id}>
                       <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                      <td className="fw-bold">{payment.distributorId?.distributorName || payment.distributorId?.name}</td>
+                      <td className="fw-bold">{payment.distributorId?.distributorName || payment.distributorId?.companyName}</td>
                       <td>
                         <span className="badge bg-info">
                           {payment.paymentMethod}
@@ -624,7 +606,7 @@ const PaymentManagement = () => {
                         <div className="d-flex align-items-center mb-2">
                           <i className="fas fa-user text-muted me-2" style={{width: '16px'}}></i>
                           <span className="text-muted me-2">Distributor:</span>
-                          <span className="fw-medium">{payment.distributorId?.distributorName || payment.distributorId?.name}</span>
+                          <span className="fw-medium">{payment.distributorId?.distributorName || payment.distributorId?.companyName}</span>
                         </div>
                         <div className="d-flex align-items-center mb-2">
                           <i className="fas fa-credit-card text-muted me-2" style={{width: '16px'}}></i>
@@ -668,6 +650,20 @@ const PaymentManagement = () => {
             </div>
           </div>
         )}
+        
+        {/* Toast Container for notifications */}
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="dark"
+        />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 const Staff = require("../models/Staff");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { cloudinary } = require("../config/cloudinary");
 const { createUserSession, destroySession } = require("../middlewares/sessionMiddleware");
 
 exports.getAllStaff = async (req, res) => {
@@ -18,12 +19,17 @@ exports.addStaff = async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Get Cloudinary URL from uploaded file if image was provided
+    const imageUrl = req.file ? req.file.path : null;
+    
     const staff = new Staff({
       name,
       role,
       username,
       email,
       phone,
+      imageUrl,
       password: hashedPassword
     });
     await staff.save();
@@ -47,6 +53,30 @@ exports.updateStaff = async (req, res) => {
     // Only hash password if it's provided
     if (password && password.trim()) {
       updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    // Handle image upload if new image is provided
+    if (req.file) {
+      // Get the current staff to check for existing image
+      const currentStaff = await Staff.findById(id);
+      if (currentStaff && currentStaff.imageUrl && currentStaff.imageUrl.includes('cloudinary.com')) {
+        try {
+          // Extract public_id from Cloudinary URL
+          const urlParts = currentStaff.imageUrl.split('/');
+          const publicId = urlParts[urlParts.length - 1].split('.')[0];
+          const folderPath = 'davago_uploads';
+          const fullPublicId = `${folderPath}/${publicId}`;
+          
+          await cloudinary.uploader.destroy(fullPublicId);
+          console.log('✅ Old staff image deleted from Cloudinary:', fullPublicId);
+        } catch (deleteError) {
+          console.warn('⚠️ Failed to delete old image from Cloudinary:', deleteError.message);
+          // Continue with update even if old image deletion fails
+        }
+      }
+      
+      // Get Cloudinary URL from uploaded file
+      updateData.imageUrl = req.file.path;
     }
 
     console.log("Update data:", updateData);
@@ -147,6 +177,7 @@ exports.staffLogin = async (req, res) => {
         username: staff.username,
         name: staff.name,
         email: staff.email,
+        imageUrl: staff.imageUrl,
         role: 'staff'
       }
     });
@@ -193,6 +224,7 @@ exports.getStaffSessionInfo = async (req, res) => {
         username: staff.username,
         name: staff.name,
         email: staff.email,
+        imageUrl: staff.imageUrl,
         role: 'staff'
       },
       session: {

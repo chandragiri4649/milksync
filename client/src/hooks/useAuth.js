@@ -12,26 +12,23 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Legacy token support for backward compatibility
-  const [adminToken, setAdminToken] = useState(() => localStorage.getItem("adminToken"));
-  const [staffToken, setStaffToken] = useState(() => localStorage.getItem("staffToken"));
-  const [distributorToken, setDistributorToken] = useState(() => localStorage.getItem("distributorToken"));
-  const [token, setToken] = useState(() => {
-    const admin = localStorage.getItem("adminToken");
-    const staff = localStorage.getItem("staffToken");
-    const distributor = localStorage.getItem("distributorToken");
-    console.log("🔐 useAuth - Initial token check:", { admin: !!admin, staff: !!staff, distributor: !!distributor });
-    return admin || staff || distributor;
-  });
+  const [adminToken, setAdminToken] = useState(null);
+  const [staffToken, setStaffToken] = useState(null);
+  const [distributorToken, setDistributorToken] = useState(null);
+  const [token, setToken] = useState(null);
 
   // Check session on app load
   useEffect(() => {
+    let isMounted = true;
+    
     const checkSession = async () => {
       try {
+        if (!isMounted) return;
         setIsLoading(true);
         
         // Check for active session (server will return user info with role)
         const sessionData = await apiService.checkSession();
-        if (sessionData && sessionData.user) {
+        if (isMounted && sessionData && sessionData.user) {
           setIsAuthenticated(true);
           setUserType(sessionData.user.role || sessionData.userType);
           setUser(sessionData.user);
@@ -44,10 +41,15 @@ export const AuthProvider = ({ children }) => {
         }
 
         // If no session found, check for legacy tokens
-        if (token) {
+        const admin = localStorage.getItem("adminToken");
+        const staff = localStorage.getItem("staffToken");
+        const distributor = localStorage.getItem("distributorToken");
+        const legacyToken = admin || staff || distributor;
+        
+        if (isMounted && legacyToken) {
           console.log("🔐 Checking legacy token...");
           try {
-            const decoded = jwtDecode(token);
+            const decoded = jwtDecode(legacyToken);
             const { exp, role, _id, id, username, name, email } = decoded;
             const now = Date.now() / 1000;
             
@@ -73,9 +75,13 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error("Session check failed:", error);
-        clearTokens();
+        if (isMounted) {
+          clearTokens();
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -93,7 +99,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkSession();
-  }, [token]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Only run once on component mount
 
   const login = async (credentials, type = "admin") => {
     try {

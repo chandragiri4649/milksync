@@ -16,18 +16,36 @@ const StaffDistributorProfiles = () => {
         setLoading(true);
         setError("");
 
+        console.log("🔍 StaffDistributorProfiles - Starting fetch...");
+        console.log("🔍 Token available:", !!token);
+        
         const data = await apiService.get('/distributor');
+        console.log("🔍 StaffDistributorProfiles - Fetched data:", data);
+        console.log("🔍 StaffDistributorProfiles - Data type:", typeof data);
+        console.log("🔍 StaffDistributorProfiles - Data length:", Array.isArray(data) ? data.length : 'Not an array');
+        
         setDistributors(data || []);
       } catch (err) {
-        console.error("Error fetching distributors:", err);
-        setError("Failed to load distributor profiles. Please try again later.");
+        console.error("❌ StaffDistributorProfiles - Error fetching distributors:", err);
+        console.error("❌ Error details:", {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
+        setError(`Failed to load distributor profiles: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDistributors();
-  }, []);
+    if (token) {
+      fetchDistributors();
+    } else {
+      console.log("❌ StaffDistributorProfiles - No token available");
+      setError("Authentication required. Please login again.");
+      setLoading(false);
+    }
+  }, [token]);
 
   return (
     <div className="min-vh-100" style={{ backgroundColor: '#f8f9fa', fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif' }}>
@@ -61,6 +79,32 @@ const StaffDistributorProfiles = () => {
           <div className="alert alert-danger text-center" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
             {error}
+            <br />
+            <button 
+              className="btn btn-sm btn-outline-danger mt-2"
+              onClick={() => {
+                setError("");
+                setLoading(true);
+                // Retry the fetch
+                const fetchDistributors = async () => {
+                  try {
+                    console.log("🔄 Retrying fetch...");
+                    const data = await apiService.get('/distributor');
+                    console.log("🔄 Retry result:", data);
+                    setDistributors(data || []);
+                  } catch (err) {
+                    console.error("🔄 Retry failed:", err);
+                    setError(`Retry failed: ${err.message}`);
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                fetchDistributors();
+              }}
+            >
+              <i className="bi bi-arrow-clockwise me-1"></i>
+              Retry
+            </button>
           </div>
         )}
 
@@ -117,7 +161,7 @@ const StaffDistributorProfiles = () => {
                             <label className="form-label text-muted small fw-semibold">COMPANY NAME</label>
                             <p className="fs-6 text-dark mb-0">
                               <i className="bi bi-building-fill text-primary me-2"></i>
-                              {distributor.name || "N/A"}
+                              {distributor.companyName || "N/A"}
                             </p>
                           </div>
 

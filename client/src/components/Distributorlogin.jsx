@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom"; // For redirecting after successful login
 import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 import config from "../config"; // Import config for API base URL
@@ -11,10 +11,14 @@ const DistributorLogin = () => {
   const [isLoading, setIsLoading] = useState(false); // Loading state
   const navigate = useNavigate(); // Navigation hook for page redirection
   const { login, isAuthenticated, userType, isLoading: authLoading } = useAuth(); // Get auth state and login function
+  const hasRedirected = useRef(false); // Prevent multiple redirects
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (!authLoading && isAuthenticated && userType) {
+    if (!authLoading && isAuthenticated && userType && !hasRedirected.current) {
+      console.log("🔄 DistributorLogin - Redirecting authenticated user:", { userType });
+      hasRedirected.current = true;
+      
       // Redirect to appropriate dashboard based on user type
       switch (userType) {
         case 'admin':
@@ -30,7 +34,7 @@ const DistributorLogin = () => {
           break;
       }
     }
-  }, [isAuthenticated, userType, authLoading, navigate]);
+  }, [isAuthenticated, userType, authLoading]); // Removed navigate from dependencies
 
   // Show loading while checking authentication
   if (authLoading) {
@@ -48,12 +52,26 @@ const DistributorLogin = () => {
 
   // Don't render login form if already authenticated
   if (isAuthenticated && userType) {
-    return null; // Will redirect in useEffect
+    console.log("🚫 DistributorLogin - User already authenticated, not rendering form");
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Redirecting to dashboard...</p>
+        </div>
+      </div>
+    );
   }
 
   // Login form submit handler
   const handleLogin = async (e) => {
     e.preventDefault(); // Prevents page reload
+    
+    // Prevent multiple submissions
+    if (isLoading) return;
+    
     setMessage(""); // Clear previous messages
     setIsLoading(true); // Start loading
 

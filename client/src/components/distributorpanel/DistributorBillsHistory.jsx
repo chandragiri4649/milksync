@@ -24,18 +24,23 @@ export default function DistributorBillsHistory() {
   const fetchDistributorBills = useCallback(async () => {
     try {
       setLoading(true);
+      console.log("🔍 DistributorBillsHistory - Starting to fetch bills...");
       
       // Fetch all bills and filter for this distributor
       const data = await apiService.get('/bills/distributor');
+      console.log("📋 DistributorBillsHistory - Received data:", data);
       
       // Filter bills for this distributor only
       if (Array.isArray(data)) {
+        console.log("✅ DistributorBillsHistory - Bills array received, length:", data.length);
         // Since this is distributor view, we need to filter by the logged-in distributor
         // The API should return only bills for the authenticated distributor
         setBills(data);
         setSelectedMonth(currentMonth);
       } else if (data && typeof data === 'object') {
+        console.log("⚠️ DistributorBillsHistory - Object received:", data);
         if (data.error) {
+          console.log("❌ DistributorBillsHistory - Error in data:", data.error);
           setMessage(data.error);
           setBills([]);
         } else {
@@ -43,11 +48,12 @@ export default function DistributorBillsHistory() {
           setMessage("No bills data received");
         }
       } else {
+        console.log("❌ DistributorBillsHistory - Unexpected data type:", typeof data, data);
         setBills([]);
         setMessage("No bills data received");
       }
     } catch (error) {
-      console.error("Error fetching distributor bills:", error);
+      console.error("❌ DistributorBillsHistory - Error fetching distributor bills:", error);
       setMessage("Failed to load bills. Please try again.");
       setBills([]);
     } finally {
@@ -193,11 +199,11 @@ export default function DistributorBillsHistory() {
   }
 
   return (
-    <div className="container-fluid p-4" style={{ maxWidth: '1200px', overflowX: 'hidden' }}>
+    <div className="container-fluid px-4 py-2" style={{ maxWidth: '1200px', overflowX: 'hidden' }}>
       {/* Header */}
-      <div className="text-center mb-4 p-4 bg-primary bg-gradient rounded-4 text-white shadow">
-        <h2 className="mb-2 fw-semibold" style={{ fontSize: '2.2rem' }}>My Bills</h2>
-        <p className="mb-0 fs-5 opacity-75">View and manage all bills generated for your orders</p>
+      <div className="text-center mb-3 p-3 bg-primary bg-gradient rounded-4 text-white shadow">
+        <h2 className="mb-1 fw-semibold" style={{ fontSize: '1.5rem' }}>My Bills</h2>
+        <p className="mb-0 small opacity-75">View and manage all bills generated for your orders</p>
       </div>
 
       {/* Message Display */}
@@ -214,118 +220,106 @@ export default function DistributorBillsHistory() {
       )}
 
       {/* Summary Statistics */}
-      <div className="row g-3 mb-4">
+      <div className="row g-2 mb-3">
         <div className="col-6">
-          <div className="card bg-info bg-opacity-10 border-info border-start border-4 h-100">
-            <div className="card-body text-center">
-              <div className="fw-semibold text-muted small">Total Bills</div>
-              <div className="fs-4 fw-bold text-dark">{summaryStats.totalBills}</div>
+          <div className="card bg-info bg-opacity-10 border-info border-start border-3 h-100">
+            <div className="card-body text-center py-2">
+              <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Total Bills</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>{summaryStats.totalBills}</div>
             </div>
           </div>
         </div>
         <div className="col-6">
-          <div className="card bg-primary bg-opacity-10 border-primary border-start border-4 h-100">
-            <div className="card-body text-center">
-              <div className="fw-semibold text-muted small">Total Amount</div>
-              <div className="fs-4 fw-bold text-dark">₹{summaryStats.totalAmount.toFixed(2)}</div>
+          <div className="card bg-primary bg-opacity-10 border-primary border-start border-3 h-100">
+            <div className="card-body text-center py-2">
+              <div className="fw-semibold text-muted" style={{ fontSize: '0.8rem' }}>Total Amount</div>
+              <div className="fw-bold text-dark" style={{ fontSize: '1.2rem' }}>₹{summaryStats.totalAmount.toFixed(2)}</div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filter Controls */}
-      <div className="card mb-4" style={{ overflow: 'hidden' }}>
-        <div className="card-body" style={{ position: 'relative' }}>
-          <div className="mb-3">
-            <div className="position-relative">
-              <input
-                type="text"
-                placeholder="Search bills by ID, order ID, or product..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="form-control ps-5"
-              />
-              <span className="position-absolute top-50 start-0 translate-middle-y ms-3">🔍</span>
-            </div>
-          </div>
-          
-          <div className="row g-3 mb-3">
-            <div className="col-md-4 col-12">
-              <label className="form-label fw-semibold">Month:</label>
+      <div className="card mb-3" style={{ overflow: 'hidden' }}>
+        <div className="card-body py-2">
+          <div className="row g-2 align-items-end">
+            {/* Search Input */}
+            <div className="col-md-3 col-6">
               <div className="position-relative">
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="form-select"
-                  style={{ 
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <option value="">All Months</option>
-                  {getMonthOptions().map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                <input
+                  type="text"
+                  placeholder="Search bills..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-control form-control-sm ps-4"
+                />
+                <span className="position-absolute top-50 start-0 translate-middle-y ms-2" style={{ fontSize: '0.8rem' }}>🔍</span>
               </div>
             </div>
             
-            <div className="col-md-4 col-12">
-              <label className="form-label fw-semibold">Year:</label>
-              <div className="position-relative">
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="form-select"
-                  style={{ 
-                    width: '100%',
-                    maxWidth: '100%',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  {getYearOptions().map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
+            {/* Month Select */}
+            <div className="col-md-2 col-6">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="form-select form-select-sm"
+              >
+                <option value="">All Months</option>
+                {getMonthOptions().map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
             </div>
             
-            <div className="col-md-4 d-flex align-items-end gap-2">
+            {/* Year Select */}
+            <div className="col-md-2 col-6">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="form-select form-select-sm"
+              >
+                {getYearOptions().map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="col-md-3 col-6 d-flex gap-1">
               <button 
-                className="btn btn-outline-secondary"
+                className="btn btn-outline-secondary btn-sm flex-fill"
                 onClick={() => { 
                   setSelectedMonth(""); 
                   setSelectedYear(new Date().getFullYear().toString()); 
                   setSearchTerm(""); 
                 }}
               >
-                Clear Filters
+                Clear
               </button>
               
               <button 
-                className="btn btn-success"
+                className="btn btn-success btn-sm flex-fill"
                 onClick={exportToCSV}
               >
-                Export CSV
+                Export
               </button>
             </div>
-          </div>
 
-          {/* View Mode Toggle */}
-          <div className="d-flex gap-2">
-            <button 
-              className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setViewMode('cards')}
-            >
-              📋 Cards
-            </button>
-            <button 
-              className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setViewMode('table')}
-            >
-              📊 Table
-            </button>
+            {/* View Mode Toggle */}
+            <div className="col-md-2 col-6 d-flex gap-1">
+              <button 
+                className={`btn btn-sm flex-fill ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('cards')}
+              >
+                Cards
+              </button>
+              <button 
+                className={`btn btn-sm flex-fill ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                onClick={() => setViewMode('table')}
+              >
+                Table
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -385,16 +379,36 @@ export default function DistributorBillsHistory() {
                       </div>
                       
                       <div className="mb-3">
-                        <div className="fw-semibold text-muted small mb-2">Bill Items:</div>
-                        <div className="small">
-                          {bill.items.slice(0, 3).map((item, idx) => (
-                            <div key={idx} className="text-dark mb-1">
-                              • <strong>{item.productName}</strong> - {item.quantity} {item.unit || 'tubs'}
+                        <div className="fw-semibold text-muted small mb-2">Bill Items ({bill.items?.length || 0}):</div>
+                        <div className="row g-2">
+                          {bill.items?.map((item, idx) => (
+                            <div key={idx} className="col-12">
+                              <div className="d-flex justify-content-between align-items-center p-2 bg-light rounded border">
+                                <div className="d-flex align-items-center">
+                                  <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                       style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
+                                    {idx + 1}
+                                  </div>
+                                  <div>
+                                    <div className="fw-bold text-dark" style={{ fontSize: '0.85rem' }}>
+                                      {item.productName || 'N/A'} {item.quantity} {item.unit || 'units'} = ₹{((item.pricePerUnit || 0) * (item.quantity || 0)).toFixed(2)}
+                                    </div>
+                                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                      ₹{item.pricePerUnit || 0} per {item.unit || 'unit'}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-end">
+                                  <div className="fw-bold text-success" style={{ fontSize: '0.9rem' }}>
+                                    ₹{((item.pricePerUnit || 0) * (item.quantity || 0)).toFixed(2)}
+                                  </div>
+                                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                    Total Cost
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           ))}
-                          {bill.items.length > 3 && (
-                            <div className="text-muted small">+{bill.items.length - 3} more items</div>
-                          )}
                         </div>
                       </div>
                       
@@ -485,7 +499,7 @@ export default function DistributorBillsHistory() {
                         <div>
                           {bill.items.slice(0, 2).map((item, idx) => (
                             <div key={idx} className="small text-dark">
-                              <strong>{item.productName}</strong> - {item.quantity} {item.unit || 'tubs'}
+                              <strong>{item.productName}</strong> - {item.quantity} {item.unit || 'tub'}
                             </div>
                           ))}
                           {bill.items.length > 2 && (
@@ -612,7 +626,7 @@ export default function DistributorBillsHistory() {
                         {selectedBill.items.map((item, idx) => (
                           <tr key={idx}>
                             <td className="fw-bold text-dark">{item.productName}</td>
-                            <td className="text-dark">{item.quantity} {item.unit || 'tubs'}</td>
+                            <td className="text-dark">{item.quantity} {item.unit || 'tub'}</td>
                             <td className="text-dark">₹{item.price?.toFixed(2) || '0.00'}</td>
                             <td className="fw-bold text-dark">₹{item.total?.toFixed(2) || '0.00'}</td>
                           </tr>

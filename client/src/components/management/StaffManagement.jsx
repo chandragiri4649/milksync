@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from "../../hooks/useAuth";
 import apiService from "../../utils/apiService";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import DeleteModal from "../DeleteModal";
 
 const StaffManagement = () => {
   // State to store the list of staff fetched from the server
@@ -13,6 +15,9 @@ const StaffManagement = () => {
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [image, setImage] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Enhanced state for modern features
   const [searchTerm, setSearchTerm] = useState("");
@@ -22,11 +27,13 @@ const StaffManagement = () => {
   const [editingStaff, setEditingStaff] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
 
+  // Modal states
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   // Feedback message state
   const [message, setMessage] = useState("");
-
-  // Get logged-in admin token from auth context
-  const { token } = useAuth();
 
   const roles = ["admin", "staff"];
 
@@ -36,7 +43,7 @@ const StaffManagement = () => {
       const data = await apiService.get('/admin/staff');
       setStaffList(data);
     } catch (err) {
-      setMessage("Failed to fetch staff.");
+      toast.error("Failed to fetch staff.");
       console.error("Fetch staff error:", err);
     }
   }, []);
@@ -61,7 +68,8 @@ const StaffManagement = () => {
         member.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.phone?.toLowerCase().includes(searchTerm.toLowerCase())
+        member.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                 member.imageUrl?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -72,18 +80,19 @@ const StaffManagement = () => {
   const exportToCSV = () => {
     const filteredStaff = getFilteredStaff();
     if (filteredStaff.length === 0) {
-      setMessage("No staff to export");
+      toast.warning("No staff to export");
       return;
     }
 
     const csvContent = [
-      ["Name", "Username", "Role", "Email", "Phone"],
+      ["Name", "Username", "Role", "Email", "Phone", "Image"],
       ...filteredStaff.map(member => [
         member.name || "N/A",
         member.username || "N/A",
         member.role || "N/A",
         member.email || "N/A",
-        member.phone || "N/A"
+        member.phone || "N/A",
+                 member.imageUrl || "N/A"
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -94,7 +103,7 @@ const StaffManagement = () => {
     a.download = `staff_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
-    setMessage("Staff list exported successfully!");
+    toast.success("Staff list exported successfully!");
   };
 
   // Calculate summary statistics
@@ -110,6 +119,15 @@ const StaffManagement = () => {
 
   const summaryStats = getSummaryStats();
 
+  // Handle image file selection
+  const handleImageChange = (e) => {
+    if (e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   // Reset form fields
   const resetForm = () => {
     setName("");
@@ -118,6 +136,9 @@ const StaffManagement = () => {
     setPassword("");
     setEmail("");
     setPhone("");
+    setImage("");
+    setImageFile(null);
+    setImagePreview(null);
     setEditingStaff(null);
     setShowEditForm(false);
     setShowAddForm(false);
@@ -130,34 +151,29 @@ const StaffManagement = () => {
 
     // Basic form validation
     if (!name.trim() || !role.trim() || !username.trim() || !password) {
-      setMessage("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
     try {
-      const res = await fetch(`${config.API_BASE}/admin/staff`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, role, username, password, email, phone }),
-      });
-
-      if (res.ok) {
-        setMessage("Staff added successfully.");
-        resetForm();
-        fetchStaff();
-      } else {
-        let errorMsg = "Failed to add staff.";
-        try {
-          const errorData = await res.json();
-          if (errorData.message) errorMsg = errorData.message;
-        } catch { }
-        setMessage(errorMsg);
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("role", role);
+      formData.append("username", username);
+      formData.append("password", password);
+      formData.append("email", email);
+      formData.append("phone", phone);
+      if (imageFile) {
+        formData.append("image", imageFile);
       }
+
+      const response = await apiService.post('/admin/staff', formData);
+
+      toast.success("Staff added successfully!");
+      resetForm();
+      fetchStaff();
     } catch (err) {
-      setMessage("Server error when adding staff.");
+      toast.error(err.message || "Failed to add staff.");
       console.error("Add staff error:", err);
     }
   };
@@ -171,34 +187,31 @@ const StaffManagement = () => {
 
     // Basic form validation
     if (!name.trim() || !role.trim() || !username.trim()) {
-      setMessage("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
     try {
-      const res = await fetch(`${config.API_BASE}/admin/staff/${editingStaff._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, role, username, email, phone, password }),
-      });
-
-      if (res.ok) {
-        setMessage("Staff updated successfully.");
-        resetForm();
-        fetchStaff();
-      } else {
-        let errorMsg = "Failed to update staff.";
-        try {
-          const errorData = await res.json();
-          if (errorData.message) errorMsg = errorData.message;
-        } catch { }
-        setMessage(errorMsg);
+      const formData = new FormData();
+      formData.append("name", name);
+      formData.append("role", role);
+      formData.append("username", username);
+      formData.append("email", email);
+      formData.append("phone", phone);
+      if (password) {
+        formData.append("password", password);
       }
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const response = await apiService.put(`/admin/staff/${editingStaff._id}`, formData);
+
+      toast.success("Staff updated successfully!");
+      resetForm();
+      fetchStaff();
     } catch (err) {
-      setMessage("Server error when updating staff.");
+      toast.error(err.message || "Failed to update staff.");
       console.error("Update staff error:", err);
     }
   };
@@ -212,6 +225,9 @@ const StaffManagement = () => {
     setPassword(""); // Don't pre-fill password for security
     setEmail(staff.email || "");
     setPhone(staff.phone || "");
+    setImage(staff.imageUrl || "");
+    setImageFile(null);
+    setImagePreview(staff.imageUrl || null);
     setShowEditForm(true);
     setShowAddForm(false);
   };
@@ -221,21 +237,45 @@ const StaffManagement = () => {
     if (!window.confirm("Are you sure to delete this staff member?")) return;
 
     try {
-      const res = await fetch(`${config.API_BASE}/admin/staff/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await apiService.delete(`/admin/staff/${id}`);
 
-      if (res.ok) {
-        setMessage("Staff deleted successfully.");
-        fetchStaff();
-      } else {
-        setMessage("Failed to delete staff.");
-      }
+      setMessage("Staff deleted successfully.");
+      fetchStaff();
     } catch (err) {
-      setMessage("Server error when deleting staff.");
+      setMessage(err.message || "Failed to delete staff.");
       console.error("Delete staff error:", err);
     }
+  };
+
+  // Show delete confirmation modal
+  const showDeleteConfirmation = (staff) => {
+    setStaffToDelete(staff);
+    setShowDeleteModal(true);
+  };
+
+  // Confirm delete action
+  const confirmDelete = async () => {
+    if (!staffToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      await apiService.delete(`/admin/staff/${staffToDelete._id}`);
+      toast.success("Staff deleted successfully!");
+      fetchStaff();
+    } catch (err) {
+      toast.error(err.message || "Failed to delete staff.");
+      console.error("Delete staff error:", err);
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      setStaffToDelete(null);
+    }
+  };
+
+  // Close delete modal
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setStaffToDelete(null);
   };
 
   return (
@@ -263,89 +303,121 @@ const StaffManagement = () => {
       {/* Summary Dashboard */}
       <div className="row mb-4">
         <div className="col-lg-3 col-md-6 mb-3">
-                                <div className="card border shadow-sm h-100 border-top border-4 border-primary">
-            <div className="card-body text-center">
-              <div className="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '50px', height: '50px' }}>
-                <i className="fas fa-users text-white"></i>
+          <div className="card border shadow-sm h-100 border-top border-4 border-primary">
+            <div className="card-body ">
+              <div className="d-flex align-items-center">
+                <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-users text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Total Staff</h6>
+                  <h4 className="mb-0 fw-bold text-primary">{summaryStats.totalStaff}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-primary mb-1">{summaryStats.totalStaff}</h4>
-              <p className="text-muted mb-0">Total Staff</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
-                                <div className="card border shadow-sm h-100 border-top border-4 border-danger">
-            <div className="card-body text-center">
-              <div className="bg-danger rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '50px', height: '50px' }}>
-                <i className="fas fa-user-shield text-white"></i>
+          <div className="card border shadow-sm h-100 border-top border-4 border-danger">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-danger rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-user-shield text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Admins</h6>
+                  <h4 className="mb-0 fw-bold text-danger">{summaryStats.adminCount}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-danger mb-1">{summaryStats.adminCount}</h4>
-              <p className="text-muted mb-0">Admins</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
-                                <div className="card border shadow-sm h-100 border-top border-4 border-secondary">
-            <div className="card-body text-center">
-              <div className="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '50px', height: '50px' }}>
-                <i className="fas fa-user-tie text-white"></i>
+          <div className="card border shadow-sm h-100 border-top border-4 border-secondary">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-user-tie text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Staff</h6>
+                  <h4 className="mb-0 fw-bold text-secondary">{summaryStats.staffCount}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-secondary mb-1">{summaryStats.staffCount}</h4>
-              <p className="text-muted mb-0">Staff</p>
             </div>
           </div>
         </div>
         <div className="col-lg-3 col-md-6 mb-3">
-                                <div className="card border shadow-sm h-100 border-top border-4 border-info">
-            <div className="card-body text-center">
-              <div className="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                style={{ width: '50px', height: '50px' }}>
-                <i className="fas fa-user-check text-white"></i>
+          <div className="card border shadow-sm h-100 border-top border-4 border-info">
+            <div className="card-body">
+              <div className="d-flex align-items-center">
+                <div className="bg-info rounded-circle d-flex align-items-center justify-content-center me-3"
+                  style={{ width: '50px', height: '50px' }}>
+                  <i className="fas fa-user-check text-white"></i>
+                </div>
+                <div>
+                  <h6 className="card-title text-muted mb-1">Active</h6>
+                  <h4 className="mb-0 fw-bold text-info">{summaryStats.activeCount}</h4>
+                </div>
               </div>
-              <h4 className="fw-bold text-info mb-1">{summaryStats.activeCount}</h4>
-              <p className="text-muted mb-0">Active</p>
             </div>
           </div>
         </div>
       </div>
 
-             {/* Search and Filter Controls */}
-       <div className="row mb-4">
-         <div className="col-12">
-                      <div className="card border shadow-sm">
+      {/* Search and Filter Controls */}
+      <div className="row mb-4">
+        <div className="col-12">
+          <div className="card border shadow-sm">
             <div className="card-body">
-              <div className="row g-3">
-                <div className="col-lg-4 col-md-6">
+              <div className="d-flex align-items-center justify-content-between gap-3">
+                <div className="d-flex align-items-center gap-3">
                   <div className="position-relative">
                     <i className="fas fa-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
                     <input
                       type="text"
                       className="form-control ps-5"
-                      placeholder="Search staff by name, username, role, email, phone..."
+                      placeholder="Search staff by name, username, role, email, phone, image..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '200px' }}
                     />
                   </div>
-                </div>
-                <div className="col-lg-3 col-md-6">
                   <select
                     className="form-select"
                     value={selectedRole}
                     onChange={(e) => setSelectedRole(e.target.value)}
+                    style={{ width: '150px' }}
                   >
                     <option value="">All Roles</option>
                     {roles.map(role => (
                       <option key={role} value={role}>{role.charAt(0).toUpperCase() + role.slice(1)}</option>
                     ))}
                   </select>
-                </div>
-                <div className="col-lg-3 col-md-6">
-                  <button className="btn btn-outline-primary w-100" onClick={exportToCSV}>
+                  <button className="btn btn-outline-primary" onClick={exportToCSV}>
                     <i className="fas fa-download me-2"></i>
                     Export
+                  </button>
+                </div>
+                <div className="btn-group" role="group">
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('cards')}
+                  >
+                    <i className="fas fa-th-large me-2"></i>
+                    Cards
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
+                    onClick={() => setViewMode('table')}
+                  >
+                    <i className="fas fa-table me-2"></i>
+                    Table
                   </button>
                 </div>
               </div>
@@ -354,60 +426,36 @@ const StaffManagement = () => {
         </div>
       </div>
 
-      {/* View Mode Toggle */}
-      <div className="row mb-3">
-        <div className="col-12">
-          <div className="d-flex justify-content-center">
-            <div className="btn-group" role="group">
-              <button
-                type="button"
-                className={`btn ${viewMode === 'cards' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('cards')}
-              >
-                <i className="fas fa-th-large me-2"></i>
-                Cards
-              </button>
-              <button
-                type="button"
-                className={`btn ${viewMode === 'table' ? 'btn-primary' : 'btn-outline-primary'}`}
-                onClick={() => setViewMode('table')}
-              >
-                <i className="fas fa-table me-2"></i>
-                Table
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Message */}
-      {message && (
-        <div className="alert alert-info alert-dismissible fade show">
-          <i className="fas fa-info-circle me-2"></i>
-          {message}
-          <button type="button" className="btn-close" onClick={() => setMessage("")}></button>
-        </div>
-      )}
-
-      {/* Add Staff Button */}
+      {/* Enhanced Add Staff Button Section */}
       <div className="row mb-4">
-        <div className="col-12">
+        <div className="col-12 text-center">
           <button
-            className="btn btn-success"
+            className="btn btn-primary btn-lg px-5 py-3 fw-bold fs-5 shadow"
+            style={{
+              borderRadius: '50px',
+              minWidth: '250px'
+            }}
             onClick={() => {
               resetForm();
               setShowAddForm(!showAddForm);
             }}
           >
-            <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-2`}></i>
-            {showAddForm ? 'Hide Add Form' : 'Add New Staff'}
+            <i className={`fas ${showAddForm ? 'fa-minus' : 'fa-plus'} me-3 fs-4`}></i>
+            {showAddForm ? 'Hide Add Form' : 'Add New Staff Member'}
           </button>
+          
+          {!showAddForm && (
+            <p className="mt-3 mb-0 text-muted fs-6">
+              <i className="fas fa-info-circle me-2"></i>
+              Click to add a new staff member to your team
+            </p>
+          )}
         </div>
       </div>
 
-             {/* Add Staff Form */}
-       {showAddForm && (
-         <div className="card border shadow-sm mb-4">
+      {/* Add Staff Form */}
+      {showAddForm && (
+        <div className="card border shadow-sm mb-4">
           <div className="card-header bg-primary text-white">
             <h6 className="mb-0"><i className="fas fa-user-plus me-2"></i>Add New Staff Member</h6>
           </div>
@@ -494,6 +542,29 @@ const StaffManagement = () => {
                   />
                 </div>
                 <div className="col-12">
+                  <label className="form-label">
+                    <i className="fas fa-image me-1"></i>Profile Image
+                  </label>
+                  <div className="d-flex align-items-center gap-3">
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </div>
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="img-thumbnail" 
+                        style={{ maxWidth: '150px', maxHeight: '150px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="col-12">
                   <button
                     type="submit"
                     className="btn btn-primary"
@@ -507,9 +578,9 @@ const StaffManagement = () => {
         </div>
       )}
 
-                    {/* Edit Staff Form */}
-        {showEditForm && (
-          <div className="card border shadow-sm mb-4">
+      {/* Edit Staff Form */}
+      {showEditForm && (
+        <div className="card border shadow-sm mb-4">
           <div className="card-header bg-warning text-dark">
             <h6 className="mb-0"><i className="fas fa-user-edit me-2"></i>Edit Staff Member: {editingStaff?.name}</h6>
           </div>
@@ -595,6 +666,29 @@ const StaffManagement = () => {
                   />
                 </div>
                 <div className="col-12">
+                  <label className="form-label">
+                    <i className="fas fa-image me-1"></i>Profile Image
+                  </label>
+                  <div className="d-flex align-items-center gap-3">
+                    <input
+                      type="file"
+                      className="form-control"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </div>
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="img-thumbnail" 
+                        style={{ maxWidth: '150px', maxHeight: '150px' }}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="col-12">
                   <div className="d-flex gap-2">
                     <button
                       type="submit"
@@ -632,8 +726,8 @@ const StaffManagement = () => {
           {viewMode === 'cards' && (
             <div className="row g-4">
               {getFilteredStaff().map((member) => (
-                                 <div key={member._id} className="col-lg-4 col-md-6">
-                   <div className="card border shadow-sm h-100">
+                <div key={member._id} className="col-lg-4 col-md-6">
+                  <div className="card border shadow-sm h-100">
                     <div className="card-header bg-primary text-white">
                       <div className="d-flex align-items-center justify-content-between">
                         <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center"
@@ -646,30 +740,65 @@ const StaffManagement = () => {
                       </div>
                     </div>
                     <div className="card-body">
-                      <h6 className="card-title fw-bold">{member.name}</h6>
-                      <div className="mb-3">
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-briefcase text-muted me-2" style={{ width: '16px' }}></i>
-                          <span className="text-muted me-2">Role:</span>
-                          <span className="fw-medium">{member.role}</span>
-                        </div>
-                        <div className="d-flex align-items-center mb-2">
-                          <i className="fas fa-at text-muted me-2" style={{ width: '16px' }}></i>
-                          <span className="text-muted me-2">Username:</span>
-                          <span className="fw-medium">{member.username}</span>
-                        </div>
-                        {member.email && (
-                          <div className="d-flex align-items-center mb-2">
-                            <i className="fas fa-envelope text-muted me-2" style={{ width: '16px' }}></i>
-                            <span className="text-muted me-2">Email:</span>
-                            <span className="fw-medium">{member.email}</span>
+                      <div className="text-center mb-3">
+                        {member.imageUrl ? (
+                          <img 
+                            src={member.imageUrl} 
+                            alt={member.name}
+                            className="rounded-circle mb-2"
+                            style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div className="bg-light rounded-circle d-flex align-items-center justify-content-center mx-auto mb-2"
+                            style={{ width: '80px', height: '80px' }}>
+                            <i className="fas fa-user fa-2x text-muted"></i>
                           </div>
                         )}
+                        <h6 className="card-title fw-bold">{member.name}</h6>
+                      </div>
+                      
+                      <div className="row g-2 mb-3">
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-briefcase text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Role</small>
+                              <span className="fw-semibold">{member.role}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="col-12">
+                          <div className="d-flex align-items-center p-2 bg-light rounded">
+                            <i className="fas fa-at text-primary me-3" style={{ width: '20px' }}></i>
+                            <div>
+                              <small className="text-muted d-block">Username</small>
+                              <span className="fw-semibold">{member.username}</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {member.email && (
+                          <div className="col-12">
+                            <div className="d-flex align-items-center p-2 bg-light rounded">
+                              <i className="fas fa-envelope text-primary me-3" style={{ width: '20px' }}></i>
+                              <div>
+                                <small className="text-muted d-block">Email</small>
+                                <span className="fw-semibold">{member.email}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         {member.phone && (
-                          <div className="d-flex align-items-center mb-2">
-                            <i className="fas fa-phone text-muted me-2" style={{ width: '16px' }}></i>
-                            <span className="text-muted me-2">Phone:</span>
-                            <span className="fw-medium">{member.phone}</span>
+                          <div className="col-12">
+                            <div className="d-flex align-items-center p-2 bg-light rounded">
+                              <i className="fas fa-phone text-primary me-3" style={{ width: '20px' }}></i>
+                              <div>
+                                <small className="text-muted d-block">Phone</small>
+                                <span className="fw-semibold">{member.phone}</span>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -678,7 +807,7 @@ const StaffManagement = () => {
                         <button className="btn btn-outline-warning btn-sm flex-fill" onClick={() => startEdit(member)} title="Edit staff">
                           <i className="fas fa-edit me-1"></i>Edit
                         </button>
-                        <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => deleteStaff(member._id)} title="Delete staff">
+                        <button className="btn btn-outline-danger btn-sm flex-fill" onClick={() => showDeleteConfirmation(member)} title="Delete staff">
                           <i className="fas fa-trash me-1"></i>Delete
                         </button>
                       </div>
@@ -689,9 +818,9 @@ const StaffManagement = () => {
             </div>
           )}
 
-                     {/* Table View */}
-           {viewMode === 'table' && (
-             <div className="card border shadow-sm">
+          {/* Table View */}
+          {viewMode === 'table' && (
+            <div className="card border shadow-sm">
               <div className="card-body p-0">
                 <div className="table-responsive">
                   <table className="table table-hover mb-0">
@@ -710,7 +839,16 @@ const StaffManagement = () => {
                         <tr key={member._id}>
                           <td>
                             <div className="d-flex align-items-center">
-                              <i className="fas fa-user me-2 text-muted"></i>
+                              {member.imageUrl ? (
+                                <img 
+                                  src={member.imageUrl} 
+                                  alt={member.name}
+                                  className="rounded-circle me-2"
+                                  style={{ width: '32px', height: '32px', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <i className="fas fa-user me-2 text-muted"></i>
+                              )}
                               {member.name}
                             </div>
                           </td>
@@ -743,7 +881,7 @@ const StaffManagement = () => {
                               <button className="btn btn-outline-warning btn-sm" onClick={() => startEdit(member)} title="Edit staff">
                                 <i className="fas fa-edit"></i>
                               </button>
-                              <button className="btn btn-outline-danger btn-sm" onClick={() => deleteStaff(member._id)} title="Delete staff">
+                              <button className="btn btn-outline-danger btn-sm" onClick={() => showDeleteConfirmation(member)} title="Delete staff">
                                 <i className="fas fa-trash"></i>
                               </button>
                             </div>
@@ -758,6 +896,56 @@ const StaffManagement = () => {
           )}
         </>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        show={showDeleteModal}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+        title="Confirm Delete Staff"
+        message="Are you sure you want to delete this staff member?"
+        itemName={staffToDelete?.name}
+        itemDetails={
+          staffToDelete ? (
+            <>
+              <p className="text-muted mb-1">
+                <i className="fas fa-at me-1"></i>
+                Username: {staffToDelete.username}
+              </p>
+              <p className="text-muted mb-1">
+                <i className="fas fa-user-shield me-1"></i>
+                Role: {staffToDelete.role}
+              </p>
+              <p className="text-muted mb-1">
+                <i className="fas fa-envelope me-1"></i>
+                Email: {staffToDelete.email || "N/A"}
+              </p>
+                             {staffToDelete.imageUrl && (
+                 <p className="text-muted mb-0">
+                   <i className="fas fa-image me-1"></i>
+                   Has profile image: Yes
+                 </p>
+               )}
+            </>
+          ) : null
+        }
+        loading={deleteLoading}
+        confirmText="Delete Staff"
+      />
+
+      {/* Toast Container for notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+      />
     </div>
   );
 };

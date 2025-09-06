@@ -42,7 +42,7 @@ export default function StaffNavbar() {
 
       {/* Fixed Bottom Navigation */}
       <nav 
-        className="navbar navbar-light bg-white border-top shadow fixed-bottom"
+        className="navbar navbar-light bg-white border-top shadow fixed-bottom py-1"
         aria-label="Staff bottom navigation"
       >
         <div className="container-fluid px-2">
@@ -51,36 +51,36 @@ export default function StaffNavbar() {
             {/* Dashboard Link */}
             <NavLink
               to="/staff/dashboard"
-              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-2 cursor-pointer ${
+              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-1 cursor-pointer ${
                 isActiveLink('/staff/dashboard') ? 'text-primary' : 'text-muted'
               }`}
               aria-label="Dashboard"
             >
-              <i className="bi-house-door fs-4 mb-1"></i>
+              <i className="bi-house-door fs-5 mb-1"></i>
               <small className="fw-semibold">Dashboard</small>
             </NavLink>
 
             {/* Place Orders Link */}
             <NavLink
               to="/staff/orders"
-              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-2 cursor-pointer ${
+              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-1 cursor-pointer ${
                 isActiveLink('/staff/orders') ? 'text-primary' : 'text-muted'
               }`}
               aria-label="Place Orders"
             >
-              <i className="bi-box-seam fs-4 mb-1"></i>
+              <i className="bi-box-seam fs-5 mb-1"></i>
               <small className="fw-semibold">Orders</small>
             </NavLink>
 
             {/* My Orders Link */}
             <NavLink
               to="/staff/my-orders"
-              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-2 cursor-pointer ${
+              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-1 cursor-pointer ${
                 isActiveLink('/staff/my-orders') ? 'text-primary' : 'text-muted'
               }`}
               aria-label="My Orders"
             >
-              <i className="bi-receipt fs-4 mb-1"></i>
+              <i className="bi-receipt fs-5 mb-1"></i>
               <small className="fw-semibold">My Orders</small>
             </NavLink>
 
@@ -89,12 +89,12 @@ export default function StaffNavbar() {
             {/* Profile Link */}
             <NavLink
               to="/staff/profile"
-              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-2 cursor-pointer ${
+              className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-1 cursor-pointer ${
                 isActiveLink('/staff/profile') ? 'text-primary' : 'text-muted'
               }`}
               aria-label="Profile"
             >
-              <i className="bi-person fs-4 mb-1"></i>
+              <i className="bi-person fs-5 mb-1"></i>
               <small className="fw-semibold">Profile</small>
             </NavLink>
           </div>

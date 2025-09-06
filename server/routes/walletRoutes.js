@@ -6,8 +6,18 @@ const walletController = require("../controllers/walletController");
 const { isAuthenticated, hasRole } = require("../middlewares/sessionMiddleware");
 
 // ✅ NEW: Get wallet balance for the logged-in distributor
-router.get("/me", isAuthenticated, hasRole('distributor'), (req, res, next) => {
-  req.params.distributorId = req.user._id || req.user.id; // logged-in distributor's own ID
+router.get("/me", isAuthenticated, hasRole(['distributor']), (req, res, next) => {
+  console.log("🔍 walletRoutes - /me endpoint called");
+  console.log("🔍 walletRoutes - Session data:", {
+    userId: req.session.userId,
+    userRole: req.session.userRole,
+    username: req.session.username
+  });
+  
+  // Use the session user ID
+  req.params.distributorId = req.session.userId;
+  console.log("🔍 walletRoutes - Using distributor ID:", req.params.distributorId);
+  
   return walletController.getWallet(req, res, next);
 });
 

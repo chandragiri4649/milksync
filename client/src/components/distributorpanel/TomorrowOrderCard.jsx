@@ -5,14 +5,18 @@ import apiService from "../../utils/apiService";
 export default function TomorrowOrderCard({ onClick }) {
   const [tomorrowOrders, setTomorrowOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const token = localStorage.getItem("distributorToken");
 
   useEffect(() => {
     const fetchTomorrowOrders = async () => {
       try {
         setLoading(true);
         const data = await apiService.get('/orders/tomorrow');
-        setTomorrowOrders(data);
+        
+        if (Array.isArray(data)) {
+          setTomorrowOrders(data);
+        } else {
+          setTomorrowOrders([]);
+        }
       } catch (err) {
         console.error("Error fetching tomorrow's orders:", err);
         setTomorrowOrders([]);
@@ -80,7 +84,7 @@ export default function TomorrowOrderCard({ onClick }) {
               fontSize: '0.9rem',
               fontWeight: 'bold'
             }}>
-              Order Date: {new Date(order.orderDate).toLocaleDateString("en-GB")}
+              Delivery Date: {new Date(order.deliveryDate || order.orderDate).toLocaleDateString("en-GB")}
             </span>
             
             <span style={{ 
@@ -98,16 +102,79 @@ export default function TomorrowOrderCard({ onClick }) {
             
             <br />
             
-            {order.items.map((item, idx) => (
-              <div key={idx} style={{ marginBottom: '10px' }}>
-                <strong style={{ fontSize: '1rem' }}>
-                  {item.productId?.name}
-                </strong>{' '}
-                <span style={{ fontSize: '1rem' }}>
-                  {item.productId?.quantity}{item.productId?.unit} = {item.quantity} {item.unit}
-                </span>
+            <div style={{ marginTop: '15px' }}>
+              <div style={{ 
+                fontSize: '0.9rem', 
+                fontWeight: '600', 
+                color: '#666', 
+                marginBottom: '10px' 
+              }}>
+                Order Items ({order.items?.length || 0}):
               </div>
-            ))}
+              {order.items.map((item, idx) => (
+                <div key={idx} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #e9ecef',
+                  borderRadius: '6px',
+                  marginBottom: '6px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.7rem',
+                      marginRight: '8px'
+                    }}>
+                      {idx + 1}
+                    </div>
+                    <div>
+                      <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: '0.85rem',
+                        color: '#333'
+                      }}>
+                        {item.productId?.name}
+                      </div>
+                      {item.productId?.productQuantity && item.productId?.productUnit && (
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#666' 
+                        }}>
+                          {item.productId.productQuantity}{item.productId.productUnit} pack
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ 
+                      fontWeight: 'bold', 
+                      fontSize: '0.85rem',
+                      color: '#007bff'
+                    }}>
+                      {item.quantity} {item.unit}
+                    </div>
+                    {item.costPerUnit && (
+                      <div style={{ 
+                        fontSize: '0.75rem', 
+                        color: '#666' 
+                      }}>
+                        ₹{item.costPerUnit} each
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </React.Fragment>
         ))
       )}

@@ -1,5 +1,5 @@
 // client/src/App.js
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import SmartLandingPage from "./components/SmartLandingPage";
@@ -39,7 +39,10 @@ function App() {
           {/* 🏠 Smart Landing Page - Root Route */}
           <Route path="/" element={<SmartLandingPage />} />
 
-          {/* 🔑 Login Routes */}
+          {/* 🔑 Redirect /login to home page where login options exist */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+
+          {/* 🔑 Specific Login Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/staff/login" element={<StaffLogin />} />
           <Route path="/distributor/login" element={<DistributorLogin />} />

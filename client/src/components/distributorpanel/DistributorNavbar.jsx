@@ -16,7 +16,7 @@ export default function DistributorNavbar({ userName, companyName, subtitle, log
       <nav 
         className="navbar navbar-light bg-white border-bottom shadow-sm fixed-top"
         aria-label="Distributor header"
-        style={{ height: '80px', minHeight: '80px' }}
+        style={{ height: '60px',minHeight: '60px'}}
       >
         <div className="container-fluid px-3">
           <div className="row w-100 align-items-center g-0">
@@ -27,8 +27,8 @@ export default function DistributorNavbar({ userName, companyName, subtitle, log
                   src="/Milksync_logo.png" 
                   alt="MilkSync Logo" 
                   className="me-3" 
-                  width="80" 
-                  height="80"
+                  width="60"
+                  height="60"
                   style={{ objectFit: 'contain' }}
                 />
               </div>
@@ -46,22 +46,23 @@ export default function DistributorNavbar({ userName, companyName, subtitle, log
       <nav 
         className="navbar navbar-light bg-white border-top shadow fixed-bottom"
         aria-label="Distributor bottom navigation"
+        style={{ height: '65px', minHeight: '65px' }}
       >
-        <div className="container-fluid px-2">
+        <div className="container-fluid px-2 py-2">
           <div className="d-flex justify-content-around align-items-center w-100">
             {tabs.map((tab, idx) => (
               <button
                 key={tab.label}
                 onClick={() => onTabChange(idx)}
-                className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-2 cursor-pointer ${
+                className={`btn btn-link text-decoration-none d-flex flex-column align-items-center p-1 cursor-pointer ${
                   activeIndex === idx 
                     ? 'text-primary' 
                     : 'text-muted'
                 }`}
                 aria-label={tab.label}
               >
-                <i className={`${tab.icon} fs-4 mb-1`}></i>
-                <small className="fw-semibold">{tab.label}</small>
+                <i className={`${tab.icon} fs-6 mb-1`}></i>
+                <small className="fw-semibold" style={{ fontSize: '0.75rem', lineHeight: '1' }}>{tab.label}</small>
               </button>
             ))}
           </div>
