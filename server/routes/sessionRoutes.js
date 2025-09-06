@@ -34,6 +34,38 @@ router.get('/debug', (req, res) => {
   });
 });
 
+// Test endpoint to manually create and verify session
+router.post('/test-session', async (req, res) => {
+  try {
+    // Create a test session
+    req.session.userId = 'test-user-id';
+    req.session.userRole = 'test-role';
+    req.session.testData = 'This is test data';
+    
+    req.session.save((err) => {
+      if (err) {
+        console.error('Test session save error:', err);
+        return res.status(500).json({ error: 'Failed to save test session' });
+      }
+      
+      console.log('✅ Test session created:', {
+        sessionId: req.sessionID,
+        sessionData: req.session
+      });
+      
+      res.json({
+        message: 'Test session created',
+        sessionId: req.sessionID,
+        sessionData: req.session,
+        cookies: req.cookies || {}
+      });
+    });
+  } catch (error) {
+    console.error('Test session error:', error);
+    res.status(500).json({ error: 'Failed to create test session' });
+  }
+});
+
 // Session check without authentication middleware for debugging
 router.get('/session-info', async (req, res) => {
   try {

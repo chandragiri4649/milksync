@@ -65,9 +65,11 @@ const isAuthenticated = (req, res, next) => {
     userRole: req.session?.userRole,
     sessionId: req.session?.id,
     cookies: req.headers.cookie ? 'Present' : 'Missing',
+    customSessionId: req.headers['x-session-id'] || 'Not provided',
     userAgent: req.headers['user-agent']?.substring(0, 50)
   });
   
+  // Check if session exists and is valid
   if (req.session && req.session.userId && req.session.userRole) {
     console.log('✅ isAuthenticated - Session valid for:', req.session.userRole);
     next();
@@ -77,11 +79,28 @@ const isAuthenticated = (req, res, next) => {
     console.log('🔍 Debug - Request headers:', {
       cookie: req.headers.cookie,
       origin: req.headers.origin,
-      referer: req.headers.referer
+      referer: req.headers.referer,
+      sessionId: req.headers['x-session-id']
     });
+    
+    // For debugging: Show more detailed session info
+    if (req.session) {
+      console.log('🔍 Session exists but missing data:', {
+        sessionId: req.sessionID,
+        hasUserId: !!req.session.userId,
+        hasUserRole: !!req.session.userRole,
+        sessionKeys: Object.keys(req.session)
+      });
+    }
+    
     res.status(401).json({ 
       message: 'Authentication required',
-      sessionExpired: true 
+      sessionExpired: true,
+      debug: {
+        hasSession: !!req.session,
+        sessionId: req.sessionID,
+        cookiePresent: !!req.headers.cookie
+      }
     });
   }
 };
