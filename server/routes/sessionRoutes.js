@@ -34,6 +34,37 @@ router.get('/debug', (req, res) => {
   });
 });
 
+// Session check without authentication middleware for debugging
+router.get('/session-info', async (req, res) => {
+  try {
+    console.log('🔍 Session Info Debug:', {
+      sessionID: req.sessionID,
+      session: req.session,
+      cookies: req.cookies,
+      headers: {
+        cookie: req.get('Cookie'),
+        origin: req.get('Origin'),
+        userAgent: req.get('User-Agent')
+      }
+    });
+    
+    res.json({
+      sessionID: req.sessionID || 'No session ID',
+      hasSession: !!req.session,
+      sessionData: req.session || {},
+      cookies: req.cookies || {},
+      headers: {
+        cookie: req.get('Cookie') || 'No cookie header',
+        origin: req.get('Origin'),
+        userAgent: req.get('User-Agent')
+      }
+    });
+  } catch (error) {
+    console.error('Session info error:', error);
+    res.status(500).json({ error: 'Failed to get session info' });
+  }
+});
+
 // Generic session check endpoint
 router.get('/session', isAuthenticated, async (req, res) => {
   try {
@@ -96,7 +127,7 @@ router.post('/logout', (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined),
+        domain: process.env.COOKIE_DOMAIN || undefined,
         path: '/'
       });
       

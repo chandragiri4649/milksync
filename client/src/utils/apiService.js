@@ -48,7 +48,9 @@ class ApiService {
       method: finalOptions.method || 'GET',
       hasCredentials: finalOptions.credentials === 'include',
       headers: finalOptions.headers,
-      cookies: document.cookie || 'No cookies found'
+      cookies: document.cookie || 'No cookies found',
+      domain: window.location.hostname,
+      crossOrigin: new URL(url).hostname !== window.location.hostname
     });
 
     try {

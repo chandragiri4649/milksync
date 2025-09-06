@@ -20,7 +20,8 @@ const sessionConfig = {
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-origin
     path: '/', // Available on all paths
     // Add domain setting for cross-origin cookies
-    domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined)
+    // Try without domain first for Render deployment
+    domain: process.env.COOKIE_DOMAIN || undefined
   }
 };
 
