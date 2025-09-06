@@ -96,7 +96,7 @@ router.post('/logout', (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        domain: process.env.COOKIE_DOMAIN || undefined,
+        domain: process.env.COOKIE_DOMAIN || (process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined),
         path: '/'
       });
       
