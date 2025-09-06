@@ -295,53 +295,112 @@ const StaffPlaceOrder = () => {
     };
 
     const addToOrder = (product) => {
+        // Enhanced validation
         if (!product.quantity || product.quantity <= 0) {
             toast.warning("Please enter a valid quantity");
             return;
         }
 
+        // Check for duplicate products
+        const existingItem = orderItems.find(item => item.productId === product._id);
+        if (existingItem) {
+            toast.warning("This product is already in your order. Remove it first to add again.");
+            return;
+        }
+
+        const quantity = Number(product.quantity);
+        
+        // Additional quantity validation
+        if (quantity > 10000) {
+            toast.warning("Maximum quantity allowed is 10,000");
+            return;
+        }
+
         const newItem = {
             productId: product._id,
-            quantity: Number(product.quantity),
-            unit: product.unit
+            quantity: quantity,
+            unit: product.unit || 'tub'
         };
 
         setOrderItems(prev => [...prev, newItem]);
         setProducts(prev => prev.map(p =>
             p._id === product._id ? { ...p, added: true } : p
         ));
+        
         const productDisplay = product.productQuantity && product.productUnit 
             ? `${product.name} ${product.productQuantity}${product.productUnit}`
             : product.name;
-        toast.success(`Added ${product.quantity} ${product.unit} of ${productDisplay}`);
+        toast.success(`Added ${quantity} ${newItem.unit} of ${productDisplay}`);
     };
 
     const submitOrder = async () => {
-        if (!selectedDistributor || !orderDate || orderItems.length === 0) {
-            toast.warning("Please fill all required fields");
+        // Enhanced validation
+        if (!selectedDistributor) {
+            toast.warning("Please select a distributor");
+            return;
+        }
+        
+        if (!orderDate) {
+            toast.warning("Please select an order date");
+            return;
+        }
+        
+        if (orderItems.length === 0) {
+            toast.warning("Please add at least one item to your order");
+            return;
+        }
+
+        // Check if order date is in the past
+        const today = new Date();
+        const selectedDate = new Date(orderDate);
+        today.setHours(0, 0, 0, 0);
+        selectedDate.setHours(0, 0, 0, 0);
+        
+        if (selectedDate < today) {
+            toast.warning("Order date cannot be in the past");
             return;
         }
 
         setIsLoading(true);
         try {
-            await apiService.post('/orders', {
+            const orderData = {
                 distributorId: selectedDistributor._id,
                 orderDate,
-                items: orderItems
-            });
+                items: orderItems.map(item => ({
+                    productId: item.productId,
+                    quantity: Number(item.quantity),
+                    unit: item.unit || 'tub'
+                }))
+            };
 
-            toast.success("Order placed successfully!");
+            await apiService.post('/orders', orderData);
+
+            toast.success(`Order placed successfully! ${orderItems.length} items ordered from ${selectedDistributor.distributorName || selectedDistributor.name}`);
+            
+            // Reset form
             setOrderItems([]);
             setSelectedDistributor(null);
             setProducts([]);
             setOrderDate("");
             setShowOrderForm(false);
+            
+            // Refresh orders list
             await fetchMyOrders();
         } catch (err) {
-            toast.error(err.message);
+            console.error('Order submission error:', err);
+            const errorMessage = err.response?.data?.message || err.message || "Failed to place order";
+            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const removeFromOrder = (productId) => {
+        setOrderItems(prev => prev.filter(item => item.productId !== productId));
+        setProducts(prev => prev.map(p =>
+            p._id === productId ? { ...p, added: false, quantity: '' } : p
+        ));
+        toast.info("Item removed from order");
     };
 
     const resetOrderForm = () => {
@@ -829,22 +888,11 @@ const StaffPlaceOrder = () => {
                                                                                                 </span>
                                                                                             </h6>
                                                                                         </div>
-                                                                                        <button
-                                                                                            className="btn btn-outline-danger btn-sm"
-                                                                                            onClick={() => {
-                                                                                                // Remove item from order
-                                                                                                setOrderItems(prev => prev.filter((_, i) => i !== index));
-                                                                                                // Mark product as not added
-                                                                                                setProducts(prev => prev.map(p =>
-                                                                                                    p._id === item.productId ? { ...p, added: false } : p
-                                                                                                ));
-                                                                                                const productDisplay = product?.productQuantity && product?.productUnit 
-                                                                                                    ? `${product.name} ${product.productQuantity}${product.productUnit}`
-                                                                                                    : (product?.name || 'item');
-                                                                                                toast.info(`Removed ${productDisplay} from order`);
-                                                                                            }}
-                                                                                            title="Remove from order"
-                                                                                        >
+                                                                        <button
+                                                                            className="btn btn-outline-danger btn-sm"
+                                                                            onClick={() => removeFromOrder(item.productId)}
+                                                                            title="Remove item from order"
+                                                                        >
                                                                                             <i className="bi bi-trash"></i>
                                                                                         </button>
                                                                                     </div>
