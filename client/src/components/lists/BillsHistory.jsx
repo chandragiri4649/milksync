@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 
 const BillsHistory = () => {
@@ -23,15 +23,7 @@ const BillsHistory = () => {
   const fetchBills = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.API_BASE}/bills`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!res.ok) {
-        throw new Error("Failed to fetch bills");
-      }
-      
-      const data = await res.json();
+      const data = await apiService.get('/bills');
       setBills(data);
       setSelectedMonth(currentMonth);
     } catch (err) {
@@ -40,20 +32,16 @@ const BillsHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentMonth]);
+  }, [currentMonth]);
 
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch distributors");
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       console.error("Error fetching distributors:", err);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchBills();

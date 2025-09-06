@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 
 const PaymentHistory = () => {
@@ -10,7 +10,7 @@ const PaymentHistory = () => {
     // If it's already a complete URL (Cloudinary), use it as is
     if (imageUrl.startsWith('http')) return imageUrl;
     // If it's a local path, prepend the base URL
-    return `${config.SERVER_URL}${imageUrl}`;
+    return `${process.env.REACT_APP_SERVER_URL || ''}${imageUrl}`;
   };
 
   const { token } = useAuth();
@@ -34,13 +34,7 @@ const PaymentHistory = () => {
 
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       if (!Array.isArray(data)) {
         console.error("API returned non-array data for distributors:", data);
         setDistributors([]);
@@ -51,21 +45,12 @@ const PaymentHistory = () => {
       console.error("Error fetching distributors:", err);
       setDistributors([]);
     }
-  }, [token]);
+  }, []);
 
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.API_BASE}/payments`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(`HTTP error! status: ${res.status}, message: ${errorData.message || 'Unknown error'}`);
-      }
-      
-      const paymentsData = await res.json();
+      const paymentsData = await apiService.get('/payments');
       if (!Array.isArray(paymentsData)) {
         console.error("API returned non-array data:", paymentsData);
         setPayments([]);
@@ -81,7 +66,7 @@ const PaymentHistory = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, currentMonth]);
+  }, [currentMonth]);
 
   useEffect(() => {
     fetchDistributors();

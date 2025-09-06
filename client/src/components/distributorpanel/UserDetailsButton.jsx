@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 import Modal from "./Modal"; // Keep your modal import
 
 export default function UserDetailsButton() {
@@ -12,23 +12,8 @@ export default function UserDetailsButton() {
   useEffect(() => {
     if (!isModalOpen) return;
 
-    const token = localStorage.getItem("distributorToken");
-    if (!token) {
-      setDistributorData(null);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
-    fetch(`${config.API_BASE}/distributor/profile`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch distributor data");
-        return res.json();
-      })
+    apiService.get('/distributor/profile')
       .then((data) => setDistributorData(data))
       .catch((err) => {
         console.error(err);

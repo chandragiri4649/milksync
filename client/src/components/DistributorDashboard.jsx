@@ -7,7 +7,7 @@ import DistributorOrderHistory from "./distributorpanel/DistributorOrderHistory"
 import DistributorDeliveryHistory from "./distributorpanel/DistributorDeliveryHistory";
 import DistributorBillsHistory from "./distributorpanel/DistributorBillsHistory";
 import DistributorPaymentHistory from "./distributorpanel/DistributorPaymentHistory";
-import config from "../config";
+import apiService from "../utils/apiService";
 
 export default function DistributorDashboard() {
   const navigate = useNavigate();
@@ -36,27 +36,11 @@ export default function DistributorDashboard() {
   // ======= Fetch distributor profile =======
   useEffect(() => {
     const fetchDistributorData = async () => {
-      const token = localStorage.getItem("distributorToken");
-      if (!token) {
-        navigate("/distributor/login");
-        return;
-      }
       try {
-        const response = await fetch(`${config.API_BASE}/distributor/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          localStorage.removeItem("distributorToken");
-          navigate("/distributor/login");
-          return;
-        }
-        const data = await response.json();
+        const data = await apiService.get('/distributor/profile');
         setDistributorData(data);
       } catch (error) {
         console.error("Error fetching distributor data:", error);
-        localStorage.removeItem("distributorToken");
         navigate("/distributor/login");
       } finally {
         setLoading(false);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import config from '../../config';
+import apiService from '../../utils/apiService';
 import { useAuth } from '../../hooks/useAuth';
 
 const DamageProductsModal = ({ 
@@ -8,7 +8,7 @@ const DamageProductsModal = ({
   order, 
   onConfirmDelivery 
 }) => {
-  const { token, user } = useAuth();
+  const { user } = useAuth();
   const [damagedProducts, setDamagedProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -129,60 +129,23 @@ const DamageProductsModal = ({
       // Check if there are any damaged products
       const hasDamagedProducts = damagedProducts.some(product => product.damagedQuantity > 0);
       
+      let payload = {
+        updatedBy: {
+          role: "admin",
+          id: user._id || user.id,
+          name: user.username || user.name || 'Admin'
+        }
+      };
+
       if (hasDamagedProducts) {
-        // Call the modified mark-delivered API with damaged products data
-        const response = await fetch(`${config.API_BASE}/orders/${order._id}/deliver`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            damagedProducts: damagedProducts.filter(product => product.damagedQuantity > 0),
-            updatedBy: {
-              role: "admin",
-              id: user._id || user.id,
-              name: user.username || user.name || 'Admin'
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to mark order as delivered');
-        }
-
-        const result = await response.json();
-        
-        // Call the parent callback with success
-        onConfirmDelivery(result);
-      } else {
-        // No damaged products, proceed with normal delivery
-        const response = await fetch(`${config.API_BASE}/orders/${order._id}/deliver`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            updatedBy: {
-              role: "admin",
-              id: user._id || user.id,
-              name: user.username || user.name || 'Admin'
-            }
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to mark order as delivered');
-        }
-
-        const result = await response.json();
-        
-        // Call the parent callback with success
-        onConfirmDelivery(result);
+        payload.damagedProducts = damagedProducts.filter(product => product.damagedQuantity > 0);
       }
+
+      // Call the mark-delivered API using apiService
+      const result = await apiService.post(`/orders/${order._id}/deliver`, payload);
+      
+      // Call the parent callback with success
+      onConfirmDelivery(result);
     } catch (err) {
       setError(err.message || 'An error occurred while confirming delivery');
     } finally {

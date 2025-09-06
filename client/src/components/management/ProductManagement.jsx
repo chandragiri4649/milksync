@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const ProductManagement = () => {
   const [products, setProducts] = useState([]);
@@ -34,22 +34,18 @@ const ProductManagement = () => {
     // If it's already a complete URL (Cloudinary), use it as is
     if (imageUrl.startsWith('http')) return imageUrl;
     // If it's a local path, prepend the base URL
-    return `${config.IMAGE_BASE_URL}${imageUrl}`;
+    return `${process.env.REACT_APP_IMAGE_BASE_URL || ''}${imageUrl}`;
   };
 
   // fetch products
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/products`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch products");
-      const data = await res.json();
+      const data = await apiService.get('/products');
       setProducts(data);
     } catch {
       setMessage("Failed to fetch products.");
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchProducts();

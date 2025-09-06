@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 export default function DistributorBillsHistory() {
   const [bills, setBills] = useState([]);
@@ -22,35 +22,11 @@ export default function DistributorBillsHistory() {
 
   // Fetch bills for the logged-in distributor
   const fetchDistributorBills = useCallback(async () => {
-    const token = getDistributorToken();
-    
-    if (!token) {
-      setMessage("Authentication required. Please login again.");
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       
       // Fetch all bills and filter for this distributor
-              const response = await fetch(`${config.API_BASE}/bills/distributor`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setMessage("Authentication failed. Please login again.");
-          localStorage.removeItem("distributorToken");
-          return;
-        }
-        throw new Error(`Failed to fetch bills: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiService.get('/bills/distributor');
       
       // Filter bills for this distributor only
       if (Array.isArray(data)) {

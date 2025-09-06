@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const WalletManagement = () => {
   const { token } = useAuth();
@@ -22,18 +22,14 @@ const WalletManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch distributors");
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       setError(err.message || "Error fetching distributors");
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   // Fetch transaction history for a specific distributor
   const fetchTransactionHistory = useCallback(async (distributorId) => {
@@ -41,11 +37,7 @@ const WalletManagement = () => {
     
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${config.API_BASE}/wallets/${distributorId}/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error("Failed to fetch transaction history");
-      const data = await res.json();
+      const data = await apiService.get(`/wallets/${distributorId}/transactions`);
       setTransactionHistory(data);
     } catch (err) {
       console.error("Error fetching transaction history:", err);
@@ -53,7 +45,7 @@ const WalletManagement = () => {
     } finally {
       setLoadingHistory(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchDistributors();
@@ -66,19 +58,7 @@ const WalletManagement = () => {
     }
     setMessage(null);
     try {
-      const res = await fetch(`${config.API_BASE}/wallets/${distributorId}/credit`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: parseFloat(amount) }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to credit wallet");
-      }
-      const data = await res.json();
+      const data = await apiService.post(`/wallets/${distributorId}/credit`, { amount: parseFloat(amount) });
       setMessage(
         `✅ Wallet credited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`
       );
@@ -98,19 +78,7 @@ const WalletManagement = () => {
     }
     setMessage(null);
     try {
-      const res = await fetch(`${config.API_BASE}/wallets/${distributorId}/debit`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ amount: parseFloat(amount) }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to debit wallet");
-      }
-      const data = await res.json();
+            const data = await apiService.post(`/wallets/${distributorId}/debit`, { amount: parseFloat(amount) });
       setMessage(
         `✅ Wallet debited successfully. New balance: ₹${data.walletBalance.toFixed(2)}`
       );

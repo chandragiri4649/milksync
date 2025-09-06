@@ -1,6 +1,6 @@
 // src/components/distributorpanel/TomorrowOrderCard.jsx
 import React, { useEffect, useState } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 export default function TomorrowOrderCard({ onClick }) {
   const [tomorrowOrders, setTomorrowOrders] = useState([]);
@@ -11,13 +11,7 @@ export default function TomorrowOrderCard({ onClick }) {
     const fetchTomorrowOrders = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${config.API_BASE}/orders/tomorrow`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || "Failed to fetch tomorrow orders");
-
+        const data = await apiService.get('/orders/tomorrow');
         setTomorrowOrders(data);
       } catch (err) {
         console.error("Error fetching tomorrow's orders:", err);
@@ -28,7 +22,7 @@ export default function TomorrowOrderCard({ onClick }) {
     };
 
     fetchTomorrowOrders();
-  }, [token]);
+  }, []);
 
   // Helper function to get status class
   const getStatusClass = (status) => {

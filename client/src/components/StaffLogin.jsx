@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // For redirecting after login
 import { useAuth } from "../hooks/useAuth"; // Import useAuth hook
 import config from "../config"; // Import config for API base URL
@@ -12,7 +12,46 @@ const StaffLogin = () => {
   const [isLoading, setIsLoading] = useState(false); // Loading state
 
   const navigate = useNavigate(); // Navigation hook
-  const { login } = useAuth(); // Get login function from auth context
+  const { login, isAuthenticated, userType, isLoading: authLoading } = useAuth(); // Get auth state and login function
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && userType) {
+      // Redirect to appropriate dashboard based on user type
+      switch (userType) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'staff':
+          navigate('/staff/dashboard');
+          break;
+        case 'distributor':
+          navigate('/distributor/dashboard');
+          break;
+        default:
+          break;
+      }
+    }
+  }, [isAuthenticated, userType, authLoading, navigate]);
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (isAuthenticated && userType) {
+    return null; // Will redirect in useEffect
+  }
 
   // Form submit handler
   const handleLogin = async (e) => {
@@ -22,82 +61,20 @@ const StaffLogin = () => {
 
     try {
       console.log("🚀 StaffLogin - Starting login process for username:", username);
-      console.log("🚀 StaffLogin - API endpoint:", `${config.API_BASE}/staff/login`);
       
-      // Send login request to backend
-      const response = await fetch(`${config.API_BASE}/staff/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      // Use the new session-based login
+      const response = await login({ username, password }, 'staff');
+      
+      console.log("✅ StaffLogin - Login successful:", response);
+      setMessage("Login successful!");
 
-      let data = {};
-      // Try parsing JSON response
-      try {
-        data = await response.json();
-      } catch {
-        setMessage("Invalid server response.");
-        return;
-      }
-
-      // If login is successful
-      if (response.ok && data.token) {
-        console.log("✅ StaffLogin - Login successful, token received:", { 
-          hasToken: !!data.token, 
-          tokenLength: data.token?.length,
-          responseData: data 
-        });
-        
-        // Use the useAuth login function with staff type
-        login(data.token, "staff");
-        setMessage("Login successful!");
-
-        // Check if token was stored properly
-        setTimeout(() => {
-          const storedToken = localStorage.getItem("staffToken");
-          console.log("🔍 StaffLogin - Token storage check:", { 
-            stored: !!storedToken, 
-            storedLength: storedToken?.length,
-            willNavigate: !!storedToken 
-          });
-          
-          if (storedToken) {
-            // Test JWT decode to see if token is valid
-            try {
-              const decoded = jwtDecode(storedToken);
-              console.log("🔍 StaffLogin - Token decode test:", { 
-                decoded, 
-                role: decoded.role, 
-                exp: decoded.exp,
-                isValid: decoded.role === "staff" && Date.now() < decoded.exp * 1000
-              });
-              
-              if (decoded.role === "staff" && Date.now() < decoded.exp * 1000) {
-                console.log("🚀 StaffLogin - Token valid, navigating to dashboard...");
-                navigate("/staff/dashboard");
-              } else {
-                console.error("❌ StaffLogin - Token invalid:", { 
-                  role: decoded.role, 
-                  expired: Date.now() >= decoded.exp * 1000 
-                });
-                setMessage("Login failed - invalid token");
-              }
-            } catch (error) {
-              console.error("❌ StaffLogin - Token decode error:", error);
-              setMessage("Login failed - token decode error");
-            }
-          } else {
-            console.error("❌ StaffLogin - Token not stored, login failed");
-            setMessage("Login failed - token not stored");
-          }
-        }, 500);
-      } else {
-        console.error("❌ StaffLogin - Login failed:", { response: response.status, data });
-        setMessage(data.message || "Login failed."); // Use API error or generic
-      }
+      // Navigate to dashboard after short delay
+      setTimeout(() => {
+        navigate("/staff/dashboard");
+      }, 100);
     } catch (error) {
-      console.error("❌ StaffLogin - Network error:", error);
-      setMessage("An error occurred. Please try again.");
+      console.error("❌ StaffLogin - Login error:", error);
+      setMessage(error.message || "Login failed. Please try again.");
     } finally {
       setIsLoading(false); // Stop loading
     }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const DistributorList = () => {
   const { token } = useAuth();
@@ -16,15 +16,7 @@ const DistributorList = () => {
   const fetchDistributors = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${config.API_BASE}/admin/distributors`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!res.ok) {
-        throw new Error("Failed to fetch distributors");
-      }
-      
-      const data = await res.json();
+      const data = await apiService.get('/admin/distributors');
       setDistributors(data);
     } catch (err) {
       console.error("Could not fetch distributors:", err);
@@ -32,7 +24,7 @@ const DistributorList = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchDistributors();

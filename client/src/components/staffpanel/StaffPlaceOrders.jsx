@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 import { NavLink } from "react-router-dom";
 import StaffNavbar from "./StaffNavbar";
 
 const StaffPlaceOrders = () => {
-  const { token } = useAuth();
 
   // Helper function to get the correct image URL
   const getImageUrl = (imageUrl) => {
@@ -13,7 +12,7 @@ const StaffPlaceOrders = () => {
     // If it's already a complete URL (Cloudinary), use it as is
     if (imageUrl.startsWith('http')) return imageUrl;
     // If it's a local path, prepend the base URL
-    return `${config.IMAGE_BASE_URL}${imageUrl}`;
+    return `${process.env.REACT_APP_IMAGE_BASE_URL || ''}${imageUrl}`;
   };
   
   const [distributors, setDistributors] = useState([]);
@@ -43,43 +42,29 @@ const StaffPlaceOrders = () => {
 
      // Debug logging
    console.log('🔍 StaffPlaceOrders - Component rendered');
-   console.log('🔍 StaffPlaceOrders - Token:', token ? 'Present' : 'Missing');
    console.log('🔍 StaffPlaceOrders - Distributors:', distributors.length);
    console.log('🔍 StaffPlaceOrders - Products:', products.length);
    console.log('🔍 StaffPlaceOrders - Selected Distributor:', selectedDistributor);
-   console.log('🔍 StaffPlaceOrders - IMAGE_BASE_URL:', config.IMAGE_BASE_URL);
+   console.log('🔍 StaffPlaceOrders - IMAGE_BASE_URL:', process.env.REACT_APP_IMAGE_BASE_URL);
 
   // Fetch distributors
   const fetchDistributors = useCallback(async () => {
     console.log('🚚 Fetching distributors...');
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      console.log('📡 Distributors API response:', res.status);
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       console.log('📦 Distributors data:', data);
       setDistributors(data);
     } catch (err) {
       console.error('❌ Error fetching distributors:', err);
       setMessage("Failed to load distributors");
     }
-  }, [token]);
+  }, []);
 
   // Fetch my orders - Changed from /my-orders to / to show ALL orders (not just ones placed by current staff)
   const fetchMyOrders = useCallback(async () => {
     console.log('📋 Fetching all orders...');
     try {
-      const res = await fetch(`${config.API_BASE}/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      console.log('📡 All orders API response:', res.status);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch orders (${res.status})`);
-      }
-      
-      const data = await res.json();
+      const data = await apiService.get('/orders');
       console.log('📦 All orders data:', data);
       if (Array.isArray(data)) {
         setMyOrders(data);
@@ -92,7 +77,7 @@ const StaffPlaceOrders = () => {
       setMessage(err.message || "Failed to load orders");
       setMyOrders([]);
     }
-  }, [token]);
+  }, []);
 
   // Safety check - ensure myOrders is always an array
   const safeMyOrders = Array.isArray(myOrders) ? myOrders : [];
@@ -188,10 +173,7 @@ const StaffPlaceOrders = () => {
     setIsLoading(true);
     try {
       const promises = selectedOrders.map(orderId => 
-        fetch(`${config.API_BASE}/orders/${orderId}/deliver`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        apiService.post(`/orders/${orderId}/deliver`)
       );
 
       await Promise.all(promises);
@@ -219,10 +201,7 @@ const StaffPlaceOrders = () => {
     setIsLoading(true);
     try {
       const promises = selectedOrders.map(orderId => 
-        fetch(`${config.API_BASE}/orders/${orderId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        apiService.delete(`/orders/${orderId}`)
       );
 
       await Promise.all(promises);
@@ -294,35 +273,25 @@ Status: ${order.status}
       setMessage("");
       
       // Fetch products for the selected distributor
-      fetch(
-        `${config.API_BASE}/products/company/${encodeURIComponent(selectedDistributor.name)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-        .then(res => {
-          console.log('📡 Products API response status:', res.status);
-          if (!res.ok) {
-            throw new Error(`Failed to fetch products (${res.status})`);
+      apiService.get(`/products/company/${encodeURIComponent(selectedDistributor.name)}`)
+        .then(data => {
+          console.log('📦 Products data received:', data);
+          console.log('🔍 Sample product structure:', data[0]);
+          console.log('🖼️ Product image field:', data[0]?.image);
+          console.log('🖼️ Product imageUrl field:', data[0]?.imageUrl);
+          
+          if (!Array.isArray(data) || data.length === 0) {
+            setMessage("No products available for this distributor on the selected date");
+            setProducts([]);
+          } else {
+            setProducts(data.map(p => ({
+              ...p,
+              quantity: "",
+              unit: "tub",
+              added: false
+            })));
           }
-          return res.json();
         })
-                 .then(data => {
-           console.log('📦 Products data received:', data);
-           console.log('🔍 Sample product structure:', data[0]);
-           console.log('🖼️ Product image field:', data[0]?.image);
-           console.log('🖼️ Product imageUrl field:', data[0]?.imageUrl);
-           
-           if (!Array.isArray(data) || data.length === 0) {
-             setMessage("No products available for this distributor on the selected date");
-             setProducts([]);
-           } else {
-             setProducts(data.map(p => ({
-               ...p,
-               quantity: "",
-               unit: "tub",
-               added: false
-             })));
-           }
-         })
         .catch(err => {
           console.error('❌ Error fetching products:', err);
           setMessage(err.message || "Failed to load products");
@@ -332,7 +301,7 @@ Status: ${order.status}
           setIsFetchingProducts(false);
         });
     }
-  }, [selectedDistributor, orderDate, token]);
+  }, [selectedDistributor, orderDate]);
 
   // Restrict date picker to from tomorrow onwards
   const tomorrow = new Date();
@@ -394,23 +363,11 @@ Status: ${order.status}
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${config.API_BASE}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          distributorId: selectedDistributor._id,
-          orderDate,
-          items: orderItems
-        })
+      await apiService.post('/orders', {
+        distributorId: selectedDistributor._id,
+        orderDate,
+        items: orderItems
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || data.message || `Failed to place order (${res.status})`);
-      }
 
       console.log('✅ Order submitted successfully!');
       setMessage("Order placed successfully!");
@@ -450,17 +407,9 @@ Status: ${order.status}
         throw new Error('Distributor name not found in order data');
       }
       
-      const response = await fetch(`${config.API_BASE}/products/company/${encodeURIComponent(distributorName)}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const availableProducts = await apiService.get(`/products/company/${encodeURIComponent(distributorName)}`);
 
-      if (response.ok) {
-        const availableProducts = await response.json();
-        console.log('🔧 Edit Order - Available products:', availableProducts);
+      console.log('🔧 Edit Order - Available products:', availableProducts);
         console.log('🔧 Edit Order - Order items:', order.items);
         
         // Create a comprehensive product list
@@ -495,10 +444,7 @@ Status: ${order.status}
         setEditModeProducts(editProducts);
         setEditingOrder({ ...order });
         setShowEditModal(true);
-      } else {
-        console.error('🔧 Edit Order - API response not OK:', response.status);
-        throw new Error(`Failed to fetch products (${response.status})`);
-      }
+      // No need to check response.ok since apiService handles errors
     } catch (err) {
       console.error('❌ Error preparing edit order:', err);
       setMessage('Failed to load products for editing. Opening basic edit mode...');
@@ -519,14 +465,7 @@ Status: ${order.status}
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${config.API_BASE}/orders/${orderId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        throw new Error('Failed to delete order');
-      }
+      await apiService.delete(`/orders/${orderId}`);
 
       setMessage('Order deleted successfully!');
       fetchMyOrders(); // Refresh orders
@@ -565,17 +504,7 @@ Status: ${order.status}
 
     setIsLoading(true);
     try {
-      const res = await fetch(`${config.API_BASE}/orders/${orderId}/deliver`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to mark order as delivered');
-      }
-
-      const data = await res.json();
+      const data = await apiService.post(`/orders/${orderId}/deliver`);
       
       // Enhanced success message
       let successMessage = 'Order delivered successfully! ';
@@ -614,21 +543,10 @@ Status: ${order.status}
         return;
       }
 
-      const res = await fetch(`${config.API_BASE}/orders/${editingOrder._id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify({
-          items: updatedItems,
-          orderDate: editingOrder.orderDate
-        })
+      await apiService.put(`/orders/${editingOrder._id}`, {
+        items: updatedItems,
+        orderDate: editingOrder.orderDate
       });
-
-      if (!res.ok) {
-        throw new Error('Failed to update order');
-      }
 
       setMessage('Order updated successfully!');
       setShowEditModal(false);

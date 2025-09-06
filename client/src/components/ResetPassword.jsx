@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import config from "../config";
+import apiService from "../utils/apiService";
 
 const ResetPassword = () => {
   const [newPassword, setNewPassword] = useState("");
@@ -18,23 +18,13 @@ const ResetPassword = () => {
   useEffect(() => {
     const validateToken = async () => {
       try {
-        const response = await fetch(`${config.API_BASE}/auth/reset-password/${token}`, {
-          method: "GET",
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setIsValidToken(true);
-          setUsername(data.username);
-          setMessage("");
-        } else {
-          setIsValidToken(false);
-          setMessage(data.message || "Invalid or expired reset token");
-        }
+        const data = await apiService.get(`/auth/reset-password/${token}`);
+        setIsValidToken(true);
+        setUsername(data.username);
+        setMessage("");
       } catch (error) {
         setIsValidToken(false);
-        setMessage("Network error. Please check your connection and try again.");
+        setMessage(error.message || "Invalid or expired reset token");
         console.error("Token validation error:", error);
       } finally {
         setIsValidatingToken(false);
@@ -69,26 +59,15 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${config.API_BASE}/auth/reset-password/${token}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setMessage("Password reset successfully! Redirecting to login...");
-        setTimeout(() => {
-          navigate("/admin/login", { 
-            state: { message: "Password reset successfully! You can now login with your new password." }
-          });
-        }, 2000);
-      } else {
-        setMessage(data.message || "Failed to reset password. Please try again.");
-      }
+      await apiService.post(`/auth/reset-password/${token}`, { newPassword });
+      setMessage("Password reset successfully! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/admin/login", { 
+          state: { message: "Password reset successfully! You can now login with your new password." }
+        });
+      }, 2000);
     } catch (error) {
-      setMessage("Network error. Please check your connection and try again.");
+      setMessage(error.message || "Failed to reset password. Please try again.");
       console.error("Reset password error:", error);
     } finally {
       setIsLoading(false);

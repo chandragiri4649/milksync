@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import config from "../config";
+import apiService from "../utils/apiService";
 import StaffNavbar from "./staffpanel/StaffNavbar";
 
 
@@ -20,30 +20,22 @@ export default function StaffDashboard() {
   // Fetch today's activities
   useEffect(() => {
     const fetchTodayActivities = async () => {
-      if (!token) return;
-
       try {
         setActivityLoading(true);
         setActivityError("");
         const today = getTodayDate();
 
         // Fetch all orders placed by this staff
-        const ordersResponse = await fetch(`${config.API_BASE}/orders/my-orders`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const allOrders = await apiService.get('/orders/my-orders');
+        console.log('📦 Sample order data:', allOrders[0]);
+        console.log('📦 Distributor data:', allOrders[0]?.distributorId);
+        
+        // Filter orders created today
+        const todaysOrders = allOrders.filter(order => {
+          const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
+          return orderDate === today;
         });
-
-        if (ordersResponse.ok) {
-          const allOrders = await ordersResponse.json();
-          console.log('📦 Sample order data:', allOrders[0]);
-          console.log('📦 Distributor data:', allOrders[0]?.distributorId);
-          
-          // Filter orders created today
-          const todaysOrders = allOrders.filter(order => {
-            const orderDate = new Date(order.createdAt).toISOString().split('T')[0];
-            return orderDate === today;
-          });
-          setTodayOrders(todaysOrders);
-        }
+        setTodayOrders(todaysOrders);
 
         // Note: Staff typically only place orders, deliveries are handled by distributors
         // So we'll focus on showing only the orders placed by this staff member today
@@ -57,7 +49,7 @@ export default function StaffDashboard() {
     };
 
     fetchTodayActivities();
-  }, [token]);
+  }, []);
 
   return (
     <div className="min-vh-100" style={{ backgroundColor: '#f8f9fa', fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif' }}>

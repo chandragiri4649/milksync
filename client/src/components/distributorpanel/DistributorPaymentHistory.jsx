@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 export default function DistributorPaymentHistory() {
   // Helper function to get the correct image URL
@@ -8,7 +8,7 @@ export default function DistributorPaymentHistory() {
     // If it's already a complete URL (Cloudinary), use it as is
     if (imageUrl.startsWith('http')) return imageUrl;
     // If it's a local path, prepend the base URL
-    return `${config.SERVER_URL}${imageUrl}`;
+    return `${process.env.REACT_APP_SERVER_URL || ''}${imageUrl}`;
   };
 
   const [payments, setPayments] = useState([]);
@@ -34,35 +34,11 @@ export default function DistributorPaymentHistory() {
 
   // Fetch payments for the logged-in distributor
   const fetchDistributorPayments = useCallback(async () => {
-    const token = getDistributorToken();
-    
-    if (!token) {
-      setMessage("Authentication required. Please login again.");
-      setLoading(false);
-      return;
-    }
-
     try {
       setLoading(true);
       
       // Fetch payments for this distributor
-      const response = await fetch(`${config.API_BASE}/payments/distributor`, {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setMessage("Authentication failed. Please login again.");
-          localStorage.removeItem("distributorToken");
-          return;
-        }
-        throw new Error(`Failed to fetch payments: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiService.get('/payments/distributor');
       
       if (Array.isArray(data)) {
         setPayments(data);

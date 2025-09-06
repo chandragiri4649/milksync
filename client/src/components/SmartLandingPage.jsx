@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 export default function SmartLandingPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, userType, isLoading } = useAuth();
   const [isChecking, setIsChecking] = useState(true);
   const [userPreference, setUserPreference] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -10,20 +12,29 @@ export default function SmartLandingPage() {
 
   useEffect(() => {
     const checkUserStatus = () => {
-      // Check for existing tokens
-      const adminToken = localStorage.getItem('adminToken');
-      const staffToken = localStorage.getItem('staffToken');
-      const distributorToken = localStorage.getItem('distributorToken');
-      
+      // Wait for auth to finish loading
+      if (isLoading) {
+        return;
+      }
+
       // Check for user preference
       const savedPreference = localStorage.getItem('milksync_user_preference');
       
-      if (adminToken) {
-        navigate('/admin/dashboard');
-      } else if (staffToken) {
-        navigate('/staff/dashboard');
-      } else if (distributorToken) {
-        navigate('/distributor/dashboard');
+      // If user is authenticated, redirect to appropriate dashboard
+      if (isAuthenticated && userType) {
+        switch (userType) {
+          case 'admin':
+            navigate('/admin/dashboard');
+            break;
+          case 'staff':
+            navigate('/staff/dashboard');
+            break;
+          case 'distributor':
+            navigate('/distributor/dashboard');
+            break;
+          default:
+            break;
+        }
       } else if (savedPreference) {
         // User has a preference but no active session
         setUserPreference(savedPreference);
@@ -34,9 +45,9 @@ export default function SmartLandingPage() {
       }
     };
 
-    const timer = setTimeout(checkUserStatus, 500);
+    const timer = setTimeout(checkUserStatus, 100);
     return () => clearTimeout(timer);
-  }, [navigate]);
+  }, [navigate, isAuthenticated, userType, isLoading]);
 
   useEffect(() => {
     // Check if app is already installed
@@ -109,14 +120,16 @@ export default function SmartLandingPage() {
     }
   };
 
-  if (isChecking) {
+  if (isChecking || isLoading) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
         <div className="text-center">
           <div className="spinner-border text-primary mb-3" role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
-          <p className="text-muted">Checking your session...</p>
+          <p className="text-muted">
+            {isLoading ? 'Checking your session...' : 'Loading...'}
+          </p>
         </div>
       </div>
     );

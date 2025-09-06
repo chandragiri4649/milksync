@@ -2,23 +2,21 @@ const express = require("express");
 const router = express.Router();
 
 const productController = require("../controllers/productController");
-const authenticate = require("../middlewares/authMiddleware");
-const isAdmin = require("../middlewares/adminRoleMiddleware");
-const adminOrStaff = require("../middlewares/adminOrStaffMiddleware");
+const { isAuthenticated, hasRole } = require("../middlewares/sessionMiddleware");
 const { upload, handleUploadError } = require("../middlewares/cloudinaryUpload");
 
 // Get products (admin or staff)
-router.get("/", authenticate, adminOrStaff, productController.getProducts);
+router.get("/", isAuthenticated, hasRole(['admin', 'staff']), productController.getProducts);
 
 // Create product (admin only) with image upload
-router.post("/", authenticate, isAdmin, upload.single("image"), handleUploadError, productController.createProductWithImage);
+router.post("/", isAuthenticated, hasRole('admin'), upload.single("image"), handleUploadError, productController.createProductWithImage);
 
 // Update product (admin only) with optional image upload
-router.put("/:id", authenticate, isAdmin, upload.single("image"), handleUploadError, productController.updateProductWithImage);
+router.put("/:id", isAuthenticated, hasRole('admin'), upload.single("image"), handleUploadError, productController.updateProductWithImage);
 
 // Delete product (admin only)
-router.delete("/:id", authenticate, isAdmin, productController.deleteProduct);
+router.delete("/:id", isAuthenticated, hasRole('admin'), productController.deleteProduct);
 
-router.get("/company/:companyName", authenticate, adminOrStaff, productController.getProductsByCompany);
+router.get("/company/:companyName", isAuthenticated, hasRole(['admin', 'staff']), productController.getProductsByCompany);
 
 module.exports = router;

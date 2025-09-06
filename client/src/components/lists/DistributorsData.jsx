@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import config from '../../config';
+import apiService from '../../utils/apiService';
 import {
   BarChart,
   Bar,
@@ -29,50 +29,28 @@ const DistributorsData = () => {
   const fetchDistributors = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${config.API_BASE}/admin/distributors`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch distributors');
-      }
-
-      const data = await response.json();
+      const data = await apiService.get('/admin/distributors');
       setDistributors(data);
     } catch (err) {
       setError('Failed to fetch distributors: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const fetchDistributorFullData = useCallback(async (distributorId) => {
     try {
       setLoading(true);
       setError('');
       
-      const response = await fetch(`${config.API_BASE}/admin/distributors/${distributorId}/full-data`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch distributor data');
-      }
-
-      const data = await response.json();
+      const data = await apiService.get(`/admin/distributors/${distributorId}/full-data`);
       setDistributorData(data);
     } catch (err) {
       setError('Failed to fetch distributor data: ' + err.message);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   const handleDistributorClick = (distributor) => {
     setSelectedDistributor(distributor);

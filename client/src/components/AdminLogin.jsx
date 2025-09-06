@@ -11,7 +11,27 @@ const AdminLogin = () => {
   const [isLoading, setIsLoading] = useState(false); // Loading state
   const navigate = useNavigate(); // Navigation hook
   const location = useLocation(); // Location hook for route state
-  const { login } = useAuth(); // Get login function from auth hook
+  const { login, isAuthenticated, userType, isLoading: authLoading } = useAuth(); // Get auth state and login function
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && userType) {
+      // Redirect to appropriate dashboard based on user type
+      switch (userType) {
+        case 'admin':
+          navigate('/admin/dashboard');
+          break;
+        case 'staff':
+          navigate('/staff/dashboard');
+          break;
+        case 'distributor':
+          navigate('/distributor/dashboard');
+          break;
+        default:
+          break;
+      }
+    }
+  }, [isAuthenticated, userType, authLoading, navigate]);
 
   // Check for success message from password reset
   useEffect(() => {
@@ -22,6 +42,25 @@ const AdminLogin = () => {
     }
   }, [location, navigate]);
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="text-center">
+          <div className="spinner-border text-primary mb-3" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="text-muted">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (isAuthenticated && userType) {
+    return null; // Will redirect in useEffect
+  }
+
   // Handle login form submission
   const handleLogin = async (e) => {
     e.preventDefault(); // Prevents page refresh
@@ -29,41 +68,19 @@ const AdminLogin = () => {
     setIsLoading(true); // Start loading
 
     try {
-      // Send POST request to backend login API
-      const response = await fetch(`${config.API_BASE}/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      // Try parsing JSON response
-      let data = {};
-      try {
-        data = await response.json();
-        console.log("Login response data:", data);
-      } catch {
-        setMessage("Invalid server response."); // If parsing fails
-        return;
-      }
-
-      // If login successful and token received
-      if (response.ok && data.token) {
-        login(data.token); // Save token in auth context/local storage
-        setMessage("Login successful!");
-
-        // Navigate to dashboard after short delay
-        setTimeout(() => {
-          navigate("/admin/dashboard");
-        }, 100);
-      } else {
-        // Show server-provided error message or default one
-        setMessage(data.message || "Login failed.");
-        console.log("Login failed, reason:", data.message);
-      }
+      // Use the new session-based login
+      const response = await login({ username, password }, 'admin');
+      
+      setMessage("Login successful!");
+      
+      // Navigate to dashboard after short delay
+      setTimeout(() => {
+        navigate("/admin/dashboard");
+      }, 100);
     } catch (err) {
-      // Handle fetch/network errors
-      setMessage("An error occurred. Please try again.");
-      console.error("Fetch error:", err);
+      // Handle login errors
+      setMessage(err.message || "Login failed. Please try again.");
+      console.error("Login error:", err);
     } finally {
       setIsLoading(false); // Stop loading
     }

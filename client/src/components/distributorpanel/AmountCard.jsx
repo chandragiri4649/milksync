@@ -1,6 +1,6 @@
 // src/components/common/AmountCard.jsx
 import React, { useEffect, useState } from "react";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 export default function AmountCard({ distributorId, myWallet = false, tokenKey = "staffToken" }) {
   const [balance, setBalance] = useState(0);
@@ -11,16 +11,10 @@ export default function AmountCard({ distributorId, myWallet = false, tokenKey =
     const fetchWalletBalance = async () => {
       if (!distributorId && !myWallet) return;
 
-      const url = myWallet
-        ? `${config.API_BASE}/wallets/me`
-        : `${config.API_BASE}/wallets/${distributorId}`;
-
       try {
-        const res = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (res.ok && typeof data.walletBalance === "number") {
+        const url = myWallet ? '/wallets/me' : `/wallets/${distributorId}`;
+        const data = await apiService.get(url);
+        if (typeof data.walletBalance === "number") {
           setBalance(data.walletBalance);
         } else {
           setBalance(0);
@@ -34,7 +28,7 @@ export default function AmountCard({ distributorId, myWallet = false, tokenKey =
     };
 
     fetchWalletBalance();
-  }, [distributorId, myWallet, token]);
+  }, [distributorId, myWallet]);
 
   return (
     <div className="mx-3 mx-md-auto my-3 bg-white rounded-4 p-4 shadow border border-2 border-light position-relative overflow-hidden w-100" style={{ maxWidth: '800px' }}>

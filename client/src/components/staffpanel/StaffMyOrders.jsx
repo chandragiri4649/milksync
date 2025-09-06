@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 import { NavLink } from "react-router-dom";
 import StaffNavbar from "./StaffNavbar";
 import StaffDamageProductsModal from "./StaffDamageProductsModal";
@@ -40,29 +40,18 @@ const StaffMyOrders = () => {
   // Fetch distributors
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       console.error('❌ Error fetching distributors:', err);
     }
-  }, [token]);
+  }, []);
 
   // Fetch orders - Changed from /my-orders to / to show ALL orders (not just ones placed by current staff)
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${config.API_BASE}/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!res.ok) {
-        throw new Error(`Failed to fetch orders (${res.status})`);
-      }
-      
-      const data = await res.json();
+      const data = await apiService.get('/orders');
       if (Array.isArray(data)) {
         setOrders(data);
       } else {
@@ -76,7 +65,7 @@ const StaffMyOrders = () => {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchDistributors();

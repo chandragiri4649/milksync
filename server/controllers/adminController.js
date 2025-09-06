@@ -2,6 +2,7 @@ const Admin = require("../models/Admin");
 const ContactDetails = require("../models/ContactDetails");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { createUserSession, destroySession } = require("../middlewares/sessionMiddleware");
 
 exports.login = async (req, res) => {
   const { username, password } = req.body;
@@ -21,7 +22,10 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // Create JWT token with payload and expiration
+    // Create session for admin
+    createUserSession(req, admin, 'admin');
+
+    // Create JWT token with payload and expiration (for backward compatibility)
     const token = jwt.sign(
       {
         id: admin._id,
@@ -34,10 +38,16 @@ exports.login = async (req, res) => {
       }
     );
 
-    // Send success response with token
+    // Send success response with session and token
     return res.json({
       message: "Login successful",
       token,
+      user: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: 'admin'
+      }
     });
   } catch (error) {
     console.error("Admin login error:", error);
@@ -140,5 +150,55 @@ exports.deleteContactDetails = async (req, res) => {
   } catch (error) {
     console.error("Error deleting contact details:", error);
     res.status(500).json({ message: "Failed to delete contact details" });
+  }
+};
+
+// Logout admin
+exports.logout = async (req, res) => {
+  try {
+    destroySession(req, res, () => {
+      res.json({ message: "Logout successful" });
+    });
+  } catch (error) {
+    console.error("Admin logout error:", error);
+    res.status(500).json({ message: "Logout failed" });
+  }
+};
+
+// Get current session info
+exports.getSessionInfo = async (req, res) => {
+  try {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        message: "No active session",
+        sessionExpired: true 
+      });
+    }
+
+    const admin = await Admin.findById(req.session.userId).select('-password');
+    if (!admin) {
+      req.session.destroy();
+      return res.status(401).json({ 
+        message: "User not found",
+        sessionExpired: true 
+      });
+    }
+
+    res.json({
+      user: {
+        id: admin._id,
+        username: admin.username,
+        email: admin.email,
+        role: 'admin'
+      },
+      session: {
+        userId: req.session.userId,
+        userRole: req.session.userRole,
+        username: req.session.username
+      }
+    });
+  } catch (error) {
+    console.error("Get session info error:", error);
+    res.status(500).json({ message: "Failed to get session info" });
   }
 };

@@ -1,140 +1,170 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { jwtDecode } from "jwt-decode";
+import apiService from "../utils/apiService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Check for both admin and staff tokens
+  // Session-based authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userType, setUserType] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Legacy token support for backward compatibility
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem("adminToken"));
   const [staffToken, setStaffToken] = useState(() => localStorage.getItem("staffToken"));
-  
-  // Determine which token to use and user type
+  const [distributorToken, setDistributorToken] = useState(() => localStorage.getItem("distributorToken"));
   const [token, setToken] = useState(() => {
     const admin = localStorage.getItem("adminToken");
     const staff = localStorage.getItem("staffToken");
-    console.log("🔐 useAuth - Initial token check:", { admin: !!admin, staff: !!staff });
-    return admin || staff;
+    const distributor = localStorage.getItem("distributorToken");
+    console.log("🔐 useAuth - Initial token check:", { admin: !!admin, staff: !!staff, distributor: !!distributor });
+    return admin || staff || distributor;
   });
-  
-  const [userType, setUserType] = useState(() => {
-    const admin = localStorage.getItem("adminToken");
-    const staff = localStorage.getItem("staffToken");
-    if (admin) return "admin";
-    if (staff) return "staff";
-    return null;
-  });
-  
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
 
+  // Check session on app load
   useEffect(() => {
-    console.log("🔐 useAuth - useEffect triggered:", { token: !!token, userType });
-    
-    if (!token) {
-      setIsAuthenticated(false);
-      setUserType(null);
-      return;
-    }
+    const checkSession = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Check for active session (server will return user info with role)
+        const sessionData = await apiService.checkSession();
+        if (sessionData && sessionData.user) {
+          setIsAuthenticated(true);
+          setUserType(sessionData.user.role || sessionData.userType);
+          setUser(sessionData.user);
+          console.log("✅ Session found:", { 
+            user: sessionData.user, 
+            role: sessionData.user.role || sessionData.userType 
+          });
+          setIsLoading(false);
+          return;
+        }
 
+        // If no session found, check for legacy tokens
+        if (token) {
+          console.log("🔐 Checking legacy token...");
+          try {
+            const decoded = jwtDecode(token);
+            const { exp, role, _id, id, username, name, email } = decoded;
+            const now = Date.now() / 1000;
+            
+            if (exp > now) {
+              setIsAuthenticated(true);
+              setUserType(role || "staff");
+              setUser({
+                _id: _id || id,
+                username: username || name || email || 'User',
+                name: name || username || email || 'User',
+                email: email || username || name || 'user@example.com',
+                role: role || "staff"
+              });
+              console.log("✅ Legacy token valid");
+            } else {
+              console.log("❌ Legacy token expired");
+              clearTokens();
+            }
+          } catch (error) {
+            console.log("❌ Legacy token decode error:", error.message);
+            clearTokens();
+          }
+        }
+      } catch (error) {
+        console.error("Session check failed:", error);
+        clearTokens();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const clearTokens = () => {
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("staffToken");
+      localStorage.removeItem("distributorToken");
+      setAdminToken(null);
+      setStaffToken(null);
+      setDistributorToken(null);
+      setToken(null);
+      setUserType(null);
+      setIsAuthenticated(false);
+      setUser(null);
+    };
+
+    checkSession();
+  }, [token]);
+
+  const login = async (credentials, type = "admin") => {
     try {
-      const decoded = jwtDecode(token);
-      const { exp, role, _id, id, username, name, email } = decoded;
-      const now = Date.now() / 1000; // in seconds
-      console.log("🔐 useAuth - Token decoded:", { exp, role, _id, id, username, name, email, now, isValid: exp > now });
+      console.log("🔐 useAuth - Login called:", { type });
       
-      if (exp < now) {
-        console.log("❌ useAuth - Token expired, clearing...");
-        // Clear expired tokens
-        if (userType === "admin") {
-          localStorage.removeItem("adminToken");
-          setAdminToken(null);
-        } else if (userType === "staff") {
-          localStorage.removeItem("staffToken");
-          setStaffToken(null);
+      const response = await apiService.login(type, credentials);
+      
+      // Store token for backward compatibility
+      if (response.token) {
+        if (type === "admin") {
+          localStorage.setItem("adminToken", response.token);
+          setAdminToken(response.token);
+        } else if (type === "staff") {
+          localStorage.setItem("staffToken", response.token);
+          setStaffToken(response.token);
+        } else if (type === "distributor") {
+          localStorage.setItem("distributorToken", response.token);
+          setDistributorToken(response.token);
         }
-        setToken(null);
-        setUserType(null);
-        setIsAuthenticated(false);
-        setUser(null);
-      } else {
+        setToken(response.token);
+      }
+      
+      // Set user information from response
+      if (response.user) {
+        setUser(response.user);
+        setUserType(type);
         setIsAuthenticated(true);
-        // Ensure userType is set correctly
-        if (!userType) {
-          setUserType(role || "staff");
-        }
-        
-        // Set user information from token
-        setUser({
-          _id: _id || id,
-          username: username || name || email || 'User',
-          name: name || username || email || 'User',
-          email: email || username || name || 'user@example.com',
-          role: role || userType
-        });
-        
-        console.log("✅ useAuth - Token valid, authenticated:", { userType: role || "staff", user: { _id: _id || id, username: username || name || email || 'User' } });
       }
+      
+      console.log("✅ Login successful:", { type, user: response.user });
+      return response;
     } catch (error) {
-      console.log("❌ useAuth - Token decode error:", error.message);
-      // Clear invalid tokens
-      if (userType === "admin") {
-        localStorage.removeItem("adminToken");
-        setAdminToken(null);
-      } else if (userType === "staff") {
-        localStorage.removeItem("staffToken");
-        setStaffToken(null);
-      }
+      console.error("❌ Login failed:", error);
+      throw error;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      console.log("🔐 useAuth - Logout called");
+      
+      // Call server logout endpoint
+      await apiService.logout();
+      
+      // Clear local state
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("staffToken");
+      localStorage.removeItem("distributorToken");
+      setAdminToken(null);
+      setStaffToken(null);
+      setDistributorToken(null);
+      setToken(null);
+      setUserType(null);
+      setIsAuthenticated(false);
+      setUser(null);
+      
+      console.log("✅ Logout successful");
+    } catch (error) {
+      console.error("❌ Logout failed:", error);
+      // Still clear local state even if server logout fails
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("staffToken");
+      localStorage.removeItem("distributorToken");
+      setAdminToken(null);
+      setStaffToken(null);
+      setDistributorToken(null);
       setToken(null);
       setUserType(null);
       setIsAuthenticated(false);
       setUser(null);
     }
-  }, [token, userType]);
-
-  const login = (newToken, type = "admin") => {
-    console.log("🔐 useAuth - Login called:", { type, tokenLength: newToken?.length });
-    
-    if (type === "admin") {
-      // Clear staff token when admin logs in
-      localStorage.removeItem("staffToken");
-      setStaffToken(null);
-      
-      localStorage.setItem("adminToken", newToken);
-      setAdminToken(newToken);
-      console.log("🔐 useAuth - Admin token stored, staff token cleared");
-    } else {
-      // Clear admin token when staff logs in
-      localStorage.removeItem("adminToken");
-      setAdminToken(null);
-      
-      localStorage.setItem("staffToken", newToken);
-      setStaffToken(newToken);
-      console.log("🔐 useAuth - Staff token stored, admin token cleared");
-    }
-    setToken(newToken);
-    setUserType(type);
-    setIsAuthenticated(true);
-    
-    // Verify token was stored
-    const storedToken = localStorage.getItem(type === "admin" ? "adminToken" : "staffToken");
-    console.log("🔐 useAuth - Token storage verification:", { 
-      type, 
-      stored: !!storedToken, 
-      storedLength: storedToken?.length,
-      isAuthenticated: true 
-    });
-  };
-
-  const logout = () => {
-    console.log("🔐 useAuth - Logout called");
-    localStorage.removeItem("adminToken");
-    localStorage.removeItem("staffToken");
-    setAdminToken(null);
-    setStaffToken(null);
-    setToken(null);
-    setUserType(null);
-    setIsAuthenticated(false);
-    setUser(null);
   };
 
   return (
@@ -143,6 +173,7 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated, 
       userType,
       user,
+      isLoading,
       login, 
       logout 
     }}>

@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useParams, useLocation } from "react-router-dom";
-import config from "../../config";
+import apiService from "../../utils/apiService";
 
 const PlaceOrders = ({ role = "admin" }) => {
   // This component only displays pending orders
   // Delivered orders are automatically hidden from the display
-  const { token } = useAuth();
 
   // Helper function to get the correct image URL
   const getImageUrl = (imageUrl) => {
@@ -14,7 +13,7 @@ const PlaceOrders = ({ role = "admin" }) => {
     // If it's already a complete URL (Cloudinary), use it as is
     if (imageUrl.startsWith('http')) return imageUrl;
     // If it's a local path, prepend the base URL
-    return `${config.IMAGE_BASE_URL}${imageUrl}`;
+    return `${process.env.REACT_APP_IMAGE_BASE_URL}${imageUrl}`;
   };
   const location = useLocation();
   
@@ -43,29 +42,17 @@ const PlaceOrders = ({ role = "admin" }) => {
   // Fetch distributors (Admin or Staff)
   const fetchDistributors = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/distributor`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await apiService.get('/distributor');
       setDistributors(data);
     } catch (err) {
       setMessage("Failed to load distributors");
     }
-  }, [token]);
+  }, []);
 
   // Fetch my orders - Changed from /my-orders to / to show ALL orders (not just ones placed by current admin)
   const fetchMyOrders = useCallback(async () => {
     try {
-      const res = await fetch(`${config.API_BASE}/orders`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Failed to fetch orders (${res.status}): ${errorText}`);
-      }
-      
-      const data = await res.json();
+      const data = await apiService.get('/orders');
       
       // Ensure data is always an array
       if (Array.isArray(data)) {
@@ -89,7 +76,7 @@ const PlaceOrders = ({ role = "admin" }) => {
       setMessage(err.message || "Failed to load orders");
       setMyOrders([]); // Ensure it's always an array
     }
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     fetchDistributors();
@@ -101,16 +88,7 @@ const PlaceOrders = ({ role = "admin" }) => {
     if (selectedDistributor && orderDate) {
       setIsFetchingProducts(true);
       setMessage("");
-      fetch(
-        `${config.API_BASE}/products/company/${encodeURIComponent(selectedDistributor.name)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-        .then(res => {
-          if (!res.ok) {
-            throw new Error(`Failed to fetch products (${res.status})`);
-          }
-          return res.json();
-        })
+      apiService.get(`/products/company/${encodeURIComponent(selectedDistributor.name)}`)
         .then(data => {
           if (!Array.isArray(data) || data.length === 0) {
             setProducts([]);
@@ -132,7 +110,7 @@ const PlaceOrders = ({ role = "admin" }) => {
         })
         .finally(() => setIsFetchingProducts(false));
     }
-  }, [selectedDistributor, orderDate, token]);
+  }, [selectedDistributor, orderDate]);
 
   // Filter orders based on search criteria
   const getFilteredOrders = () => {
@@ -309,31 +287,11 @@ const PlaceOrders = ({ role = "admin" }) => {
       unitValid: !!item.unit && item.unit.length > 0
     })));
     
-    fetch(`${config.API_BASE}/orders`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        distributorId: selectedDistributor._id,
-        orderDate,
-        items: orderItems
-      })
+    apiService.post('/orders', {
+      distributorId: selectedDistributor._id,
+      orderDate,
+      items: orderItems
     })
-      .then(async (res) => {
-        let data = {};
-        try { data = await res.json(); } catch {}
-        console.log('Response status:', res.status);
-        console.log('Response data:', data);
-        
-        if (!res.ok) {
-          const msg = data.error || data.message || `Failed to place order (${res.status})`;
-          const details = data.details ? `: ${data.details}` : "";
-          throw new Error(msg + details);
-        }
-        return data;
-      })
       .then(() => {
         setMessage("Order placed successfully!");
         setOrderItems([]);

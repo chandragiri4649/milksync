@@ -1,6 +1,7 @@
 const Staff = require("../models/Staff");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { createUserSession, destroySession } = require("../middlewares/sessionMiddleware");
 
 exports.getAllStaff = async (req, res) => {
   try {
@@ -100,6 +101,17 @@ exports.staffLogin = async (req, res) => {
     
     console.log("✅ staffController - Password verified for username:", username);
     
+    // Create session for staff and wait for it to be saved
+    await createUserSession(req, staff, 'staff');
+    
+    // Debug: Check if session was created
+    console.log("🔍 staffController - After session creation:", {
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      userRole: req.session?.userRole,
+      sessionExists: !!req.session
+    });
+    
     const tokenPayload = { id: staff._id, username: staff.username, role: "staff" };
     const jwtSecret = process.env.JWT_SECRET || "your_jwt_secret";
     
@@ -113,10 +125,85 @@ exports.staffLogin = async (req, res) => {
       tokenPreview: token.substring(0, 20) + "..." 
     });
     
-    res.json({ message: "Login successful", token });
+    // Debug: Check response headers
+    console.log("🔍 staffController - Response headers:", {
+      'set-cookie': res.getHeaders()['set-cookie'],
+      sessionCookie: res.getHeaders()['set-cookie']?.find(cookie => cookie.includes('connect.sid'))
+    });
+    
+    // Debug: Check if session cookie is being set
+    const sessionCookie = res.getHeaders()['set-cookie']?.find(cookie => cookie.includes('connect.sid'));
+    if (sessionCookie) {
+      console.log("✅ Session cookie is being set:", sessionCookie);
+    } else {
+      console.log("❌ No session cookie found in response headers");
+    }
+    
+    res.json({ 
+      message: "Login successful", 
+      token,
+      user: {
+        id: staff._id,
+        username: staff.username,
+        name: staff.name,
+        email: staff.email,
+        role: 'staff'
+      }
+    });
   } catch (err) {
     console.error("❌ staffController - Staff login error:", err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Logout staff
+exports.staffLogout = async (req, res) => {
+  try {
+    destroySession(req, res, () => {
+      res.json({ message: "Logout successful" });
+    });
+  } catch (error) {
+    console.error("Staff logout error:", error);
+    res.status(500).json({ message: "Logout failed" });
+  }
+};
+
+// Get current session info for staff
+exports.getStaffSessionInfo = async (req, res) => {
+  try {
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ 
+        message: "No active session",
+        sessionExpired: true 
+      });
+    }
+
+    const staff = await Staff.findById(req.session.userId).select('-password');
+    if (!staff) {
+      req.session.destroy();
+      return res.status(401).json({ 
+        message: "User not found",
+        sessionExpired: true 
+      });
+    }
+
+    res.json({
+      user: {
+        id: staff._id,
+        username: staff.username,
+        name: staff.name,
+        email: staff.email,
+        role: 'staff'
+      },
+      session: {
+        userId: req.session.userId,
+        userRole: req.session.userRole,
+        username: req.session.username
+      }
+    });
+  } catch (error) {
+    console.error("Get staff session info error:", error);
+    res.status(500).json({ message: "Failed to get session info" });
   }
 };
 
