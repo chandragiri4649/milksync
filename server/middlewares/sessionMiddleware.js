@@ -168,12 +168,12 @@ const destroySession = (req, res, next) => {
       return res.status(500).json({ message: 'Logout failed' });
     }
     
-    // Clear cookie with same options as set
+    // Clear cookie with same options as set (updated for Render)
     res.clearCookie('milksync-session', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      domain: process.env.COOKIE_DOMAIN || undefined,
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      domain: undefined, // Let it default to request domain
       path: '/'
     });
     console.log('✅ Session destroyed successfully');

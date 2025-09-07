@@ -11,17 +11,19 @@ const sessionConfig = {
   store: MongoStore.create({
     mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/milksync',
     collectionName: 'sessions',
-    ttl: 24 * 60 * 60 // 24 hours in seconds
+    ttl: 24 * 60 * 60, // 24 hours in seconds
+    touchAfter: 24 * 3600, // lazy session update
+    autoRemove: 'native' // Let MongoDB handle session cleanup
   }),
   cookie: {
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
     httpOnly: true, // Prevent XSS attacks
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Allow cross-origin
+    // Fix for Render deployment: Use 'lax' instead of 'none' for same-site requests
+    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
     path: '/', // Available on all paths
-    // Add domain setting for cross-origin cookies
-    // Try without domain first for Render deployment
-    domain: process.env.COOKIE_DOMAIN || undefined
+    // For Render, don't set domain - let it default to the request domain
+    domain: undefined
   }
 };
 

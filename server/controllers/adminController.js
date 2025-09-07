@@ -22,8 +22,8 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // Create session for admin
-    createUserSession(req, admin, 'admin');
+    // Create session for admin and wait for it to be saved
+    await createUserSession(req, admin, 'admin');
 
     // Create JWT token with payload and expiration (for backward compatibility)
     const token = jwt.sign(
@@ -34,9 +34,20 @@ exports.login = async (req, res) => {
       },
       process.env.JWT_SECRET || "your_jwt_secret", // Use environment variable in production
       {
-        expiresIn: "2h", // Token valid for 2 hours
+        expiresIn: "24h", // Token valid for 24 hours to match session
       }
     );
+
+    console.log('✅ Admin login successful:', {
+      userId: admin._id,
+      username: admin.username,
+      sessionId: req.sessionID,
+      hasSession: !!req.session,
+      sessionData: {
+        userId: req.session.userId,
+        userRole: req.session.userRole
+      }
+    });
 
     // Send success response with session and token
     return res.json({
@@ -47,7 +58,8 @@ exports.login = async (req, res) => {
         username: admin.username,
         email: admin.email,
         role: 'admin'
-      }
+      },
+      sessionId: req.sessionID // Include session ID for debugging
     });
   } catch (error) {
     console.error("Admin login error:", error);

@@ -74,12 +74,23 @@ EMAIL_PASS=your-app-password
 - Whitelist your deployment IP in MongoDB Atlas
 - Ensure cluster is running
 
-### 4. Session Issues
-**Symptom:** "Unauthorized" or login doesn't persist
+### 4. Session Issues (RENDER-SPECIFIC FIXES APPLIED)
+**Symptom:** "Unauthorized" or login doesn't persist, multiple sessions created
 **Fix:** 
 - Set `SESSION_SECRET` (minimum 32 characters)
 - Ensure HTTPS in production
-- Check cookie settings
+- ✅ Cookie sameSite set to 'lax' for Render compatibility
+- ✅ Cookie domain removed to use request domain
+- ✅ Session store optimized with touchAfter and autoRemove
+- ✅ CORS origin validation improved for production
+
+### 5. Render-Specific Session Configuration
+**Applied Fixes:**
+- Session cookies now use `sameSite: 'lax'` instead of 'none'
+- Cookie domain set to `undefined` to auto-detect from request
+- MongoDB session store optimized with lazy updates
+- CORS configuration updated for Render deployment
+- Session creation now properly awaited in login flow
 
 ## 📝 Quick Test:
 

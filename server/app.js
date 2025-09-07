@@ -27,11 +27,37 @@ const sessionRoutes = require("./routes/sessionRoutes");
 
 // Enable Cross-Origin Resource Sharing for frontend requests
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000', // Specific origin for security
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // In production, be more restrictive
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        // Add additional allowed origins if needed
+        // 'https://your-frontend-app.onrender.com'
+      ].filter(Boolean);
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        console.log('❌ CORS blocked origin:', origin);
+        return callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // In development, allow localhost origins
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    }
+  },
   credentials: true, // Allow cookies to be sent with requests
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie', 'Accept'],
+  exposedHeaders: ['Set-Cookie'],
+  optionsSuccessStatus: 200 // For legacy browser support
 }));
 
 // Session and cookie middleware (must come before other middleware)
