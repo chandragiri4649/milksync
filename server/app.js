@@ -54,6 +54,12 @@ app.use(cors({
       }
       return callback(null, true);
     }
+    
+    // Also allow localhost in production for development testing
+    if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      console.log('✅ CORS allowing localhost for development:', origin);
+      return callback(null, true);
+    }
   },
   credentials: true, // Allow cookies to be sent with requests
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
