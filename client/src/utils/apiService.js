@@ -12,7 +12,16 @@ class ApiService {
     const adminToken = localStorage.getItem('adminToken');
     const staffToken = localStorage.getItem('staffToken');
     const distributorToken = localStorage.getItem('distributorToken');
-    return adminToken || staffToken || distributorToken;
+    const token = adminToken || staffToken || distributorToken;
+    
+    console.log('🔍 Token check:', {
+      hasAdminToken: !!adminToken,
+      hasStaffToken: !!staffToken,
+      hasDistributorToken: !!distributorToken,
+      finalToken: token ? token.substring(0, 20) + '...' : 'None'
+    });
+    
+    return token;
   }
 
   // Helper method to handle API responses
@@ -59,12 +68,20 @@ class ApiService {
     // Get JWT token from localStorage (fallback when cookies don't work)
     const token = this.getToken();
     
+    // Force Authorization header for all requests
+    const authHeaders = {};
+    if (token) {
+      authHeaders['Authorization'] = `Bearer ${token}`;
+      console.log('🔑 Adding Authorization header with token:', token.substring(0, 20) + '...');
+    } else {
+      console.warn('⚠️ No JWT token found in localStorage');
+    }
+
     const defaultOptions = {
       credentials: 'include', // Important for session cookies
       headers: {
         'Content-Type': 'application/json',
-        // Always add JWT token to Authorization header if available
-        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...authHeaders,
         ...options.headers,
       },
     };
@@ -217,7 +234,21 @@ class ApiService {
   }
 
   async login(userType, credentials) {
+    console.log('🔐 Login attempt for:', userType);
     const response = await this.post(`/${userType}/login`, credentials);
+    
+    // Ensure token is stored after successful login
+    if (response.token) {
+      console.log('💾 Storing JWT token:', response.token.substring(0, 20) + '...');
+      localStorage.setItem(`${userType}Token`, response.token);
+      
+      // Verify token was stored
+      const storedToken = localStorage.getItem(`${userType}Token`);
+      console.log('✅ Token verification:', storedToken ? 'Stored successfully' : 'Failed to store');
+    } else {
+      console.warn('⚠️ No token received from login response');
+    }
+    
     return response;
   }
 
