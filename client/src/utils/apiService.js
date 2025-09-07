@@ -19,16 +19,30 @@ class ApiService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       
-      // Check for session expiry
-      if (response.status === 401 && errorData.sessionExpired) {
-        // Clear any stored tokens
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('staffToken');
-        localStorage.removeItem('distributorToken');
+      // Check for session expiry or authentication issues
+      if (response.status === 401) {
+        console.warn('🚨 Authentication failed, checking token status...');
+        const token = this.getToken();
         
-        // // Redirect to login
-        // window.location.href = '/';
-        throw new Error('Session expired. Please login again.');
+        if (!token) {
+          console.warn('🚨 No JWT token found, redirecting to login...');
+          // Clear any stored tokens
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('staffToken');
+          localStorage.removeItem('distributorToken');
+          
+          // Redirect to login
+          window.location.href = '/';
+          throw new Error('Please login again.');
+        } else {
+          console.warn('🚨 JWT token exists but authentication failed. Token might be expired.');
+          // Clear any stored tokens
+          localStorage.removeItem('adminToken');
+          localStorage.removeItem('staffToken');
+          localStorage.removeItem('distributorToken');
+          
+          throw new Error('Session expired. Please login again.');
+        }
       }
       
       throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -96,6 +110,28 @@ class ApiService {
         url: response.url,
         headers: Object.fromEntries(response.headers.entries())
       });
+      
+      // If we get 401 and we have a token but didn't send Authorization header, retry once
+      if (response.status === 401 && !finalOptions.headers.Authorization && this.getToken()) {
+        console.warn('🔄 Retrying request with Authorization header...');
+        const retryOptions = {
+          ...finalOptions,
+          headers: {
+            ...finalOptions.headers,
+            'Authorization': `Bearer ${this.getToken()}`
+          }
+        };
+        
+        const retryResponse = await fetch(url, retryOptions);
+        console.log('📡 Retry API Response:', {
+          status: retryResponse.status,
+          statusText: retryResponse.statusText,
+          url: retryResponse.url
+        });
+        
+        return await this.handleResponse(retryResponse);
+      }
+      
       return await this.handleResponse(response);
     } catch (error) {
       console.error('API request failed:', error);
