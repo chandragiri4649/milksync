@@ -1,9 +1,10 @@
 import config from '../config';
 
-// API Service for session-based requests
+// API Service for session-based requests with JWT token support
 class ApiService {
   constructor() {
     this.baseURL = config.API_BASE;
+    console.log('🚀 ApiService initialized with JWT token support');
   }
 
   // Helper method to get current JWT token
