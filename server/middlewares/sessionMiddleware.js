@@ -57,58 +57,83 @@ const getCurrentUser = async (req, res, next) => {
   }
 };
 
-// Check if user is authenticated
+// Check if user is authenticated (supports both sessions and JWT tokens)
 const isAuthenticated = (req, res, next) => {
-  console.log('🔐 isAuthenticated - Session check:', {
+  console.log('🔐 isAuthenticated - Auth check:', {
     hasSession: !!req.session,
     userId: req.session?.userId,
     userRole: req.session?.userRole,
     sessionId: req.session?.id,
     cookies: req.headers.cookie ? 'Present' : 'Missing',
-    customSessionId: req.headers['x-session-id'] || 'Not provided',
+    authHeader: req.headers.authorization ? 'Present' : 'Missing',
     userAgent: req.headers['user-agent']?.substring(0, 50)
   });
   
-  // Check if session exists and is valid
+  // First, try session-based authentication (for same-domain or when cookies work)
   if (req.session && req.session.userId && req.session.userRole) {
     console.log('✅ isAuthenticated - Session valid for:', req.session.userRole);
-    next();
-  } else {
-    console.log('❌ isAuthenticated - Session invalid or missing');
-    console.log('🔍 Debug - Full session object:', req.session);
-    console.log('🔍 Debug - Request headers:', {
-      cookie: req.headers.cookie,
-      origin: req.headers.origin,
-      referer: req.headers.referer,
-      sessionId: req.headers['x-session-id']
-    });
-    
-    // For debugging: Show more detailed session info
-    if (req.session) {
-      console.log('🔍 Session exists but missing data:', {
-        sessionId: req.sessionID,
-        hasUserId: !!req.session.userId,
-        hasUserRole: !!req.session.userRole,
-        sessionKeys: Object.keys(req.session)
-      });
-    }
-    
-    res.status(401).json({ 
-      message: 'Authentication required',
-      sessionExpired: true,
-      debug: {
-        hasSession: !!req.session,
-        sessionId: req.sessionID,
-        cookiePresent: !!req.headers.cookie
-      }
-    });
+    return next();
   }
+  
+  // Fallback to JWT token authentication (for cross-domain when cookies are blocked)
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+      
+      console.log('✅ isAuthenticated - JWT token valid for:', decoded.role);
+      
+      // Set user info in request for downstream middleware
+      req.user = {
+        id: decoded.id,
+        username: decoded.username,
+        role: decoded.role
+      };
+      
+      return next();
+    } catch (jwtError) {
+      console.log('❌ isAuthenticated - JWT token invalid:', jwtError.message);
+    }
+  }
+  
+  // Neither session nor JWT token worked
+  console.log('❌ isAuthenticated - No valid authentication found');
+  console.log('🔍 Debug - Full session object:', req.session);
+  console.log('🔍 Debug - Request headers:', {
+    cookie: req.headers.cookie,
+    authorization: req.headers.authorization ? 'Bearer token present' : 'No auth header',
+    origin: req.headers.origin,
+    referer: req.headers.referer
+  });
+  
+  res.status(401).json({ 
+    message: 'Authentication required',
+    sessionExpired: true,
+    debug: {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      cookiePresent: !!req.headers.cookie,
+      authHeaderPresent: !!req.headers.authorization
+    }
+  });
 };
 
-// Check if user has specific role
+// Check if user has specific role (supports both sessions and JWT tokens)
 const hasRole = (roles) => {
   return (req, res, next) => {
-    if (!req.session || !req.session.userRole) {
+    let userRole = null;
+    
+    // Get user role from session or JWT token
+    if (req.session && req.session.userRole) {
+      userRole = req.session.userRole;
+    } else if (req.user && req.user.role) {
+      userRole = req.user.role;
+    }
+    
+    if (!userRole) {
       return res.status(401).json({ 
         message: 'Authentication required',
         sessionExpired: true 
@@ -116,13 +141,13 @@ const hasRole = (roles) => {
     }
 
     if (Array.isArray(roles)) {
-      if (roles.includes(req.session.userRole)) {
+      if (roles.includes(userRole)) {
         next();
       } else {
         res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
       }
     } else {
-      if (req.session.userRole === roles) {
+      if (userRole === roles) {
         next();
       } else {
         res.status(403).json({ message: 'Access denied. Insufficient permissions.' });

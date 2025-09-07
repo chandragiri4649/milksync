@@ -29,14 +29,22 @@ class ApiService {
     return response.json();
   }
 
-  // Generic request method with session support
+  // Generic request method with session and JWT token support
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    
+    // Get JWT token from localStorage (fallback when cookies don't work)
+    const adminToken = localStorage.getItem('adminToken');
+    const staffToken = localStorage.getItem('staffToken');
+    const distributorToken = localStorage.getItem('distributorToken');
+    const token = adminToken || staffToken || distributorToken;
     
     const defaultOptions = {
       credentials: 'include', // Important for session cookies
       headers: {
         'Content-Type': 'application/json',
+        // Add JWT token to Authorization header if available
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
     };
@@ -51,11 +59,12 @@ class ApiService {
       cookies: document.cookie || 'No cookies found',
       domain: window.location.hostname,
       crossOrigin: new URL(url).hostname !== window.location.hostname,
-      // Enhanced cookie debugging
-      cookieDetails: {
-        allCookies: document.cookie,
+      // Enhanced authentication debugging
+      authDetails: {
+        hasJwtToken: !!token,
+        tokenSource: token ? (adminToken ? 'admin' : staffToken ? 'staff' : 'distributor') : 'none',
+        hasAuthHeader: !!finalOptions.headers.Authorization,
         sessionCookie: document.cookie.includes('milksync-session'),
-        testCookie: document.cookie.includes('test-cookie'),
         cookieCount: document.cookie ? document.cookie.split(';').length : 0
       }
     });
