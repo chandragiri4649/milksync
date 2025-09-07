@@ -19,10 +19,10 @@ const sessionConfig = {
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
     httpOnly: true, // Prevent XSS attacks
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    // Fix for Render deployment: Use 'lax' instead of 'none' for same-site requests
-    sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+    // For cross-domain cookies between different Render services, use 'none'
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/', // Available on all paths
-    // For Render, don't set domain - let it default to the request domain
+    // For Render cross-domain, don't set domain
     domain: undefined
   }
 };

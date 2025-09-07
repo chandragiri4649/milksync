@@ -35,14 +35,16 @@ app.use(cors({
     if (process.env.NODE_ENV === 'production') {
       const allowedOrigins = [
         process.env.FRONTEND_URL,
-        // Add additional allowed origins if needed
-        // 'https://your-frontend-app.onrender.com'
+        // Add your specific Render frontend URL
+        'https://milksyncweb.onrender.com'
       ].filter(Boolean);
       
       if (allowedOrigins.includes(origin)) {
+        console.log('✅ CORS allowed origin:', origin);
         return callback(null, true);
       } else {
         console.log('❌ CORS blocked origin:', origin);
+        console.log('❌ Allowed origins:', allowedOrigins);
         return callback(new Error('Not allowed by CORS'));
       }
     } else {
