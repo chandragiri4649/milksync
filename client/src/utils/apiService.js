@@ -6,6 +6,14 @@ class ApiService {
     this.baseURL = config.API_BASE;
   }
 
+  // Helper method to get current JWT token
+  getToken() {
+    const adminToken = localStorage.getItem('adminToken');
+    const staffToken = localStorage.getItem('staffToken');
+    const distributorToken = localStorage.getItem('distributorToken');
+    return adminToken || staffToken || distributorToken;
+  }
+
   // Helper method to handle API responses
   async handleResponse(response) {
     if (!response.ok) {
@@ -34,16 +42,13 @@ class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     
     // Get JWT token from localStorage (fallback when cookies don't work)
-    const adminToken = localStorage.getItem('adminToken');
-    const staffToken = localStorage.getItem('staffToken');
-    const distributorToken = localStorage.getItem('distributorToken');
-    const token = adminToken || staffToken || distributorToken;
+    const token = this.getToken();
     
     const defaultOptions = {
       credentials: 'include', // Important for session cookies
       headers: {
         'Content-Type': 'application/json',
-        // Add JWT token to Authorization header if available
+        // Always add JWT token to Authorization header if available
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
@@ -62,10 +67,24 @@ class ApiService {
       // Enhanced authentication debugging
       authDetails: {
         hasJwtToken: !!token,
-        tokenSource: token ? (adminToken ? 'admin' : staffToken ? 'staff' : 'distributor') : 'none',
+        tokenLength: token ? token.length : 0,
+        tokenSource: (() => {
+          const adminToken = localStorage.getItem('adminToken');
+          const staffToken = localStorage.getItem('staffToken');
+          const distributorToken = localStorage.getItem('distributorToken');
+          if (adminToken) return 'admin';
+          if (staffToken) return 'staff';
+          if (distributorToken) return 'distributor';
+          return 'none';
+        })(),
         hasAuthHeader: !!finalOptions.headers.Authorization,
+        authHeaderValue: finalOptions.headers.Authorization ? 'Bearer token present' : 'No auth header',
         sessionCookie: document.cookie.includes('milksync-session'),
-        cookieCount: document.cookie ? document.cookie.split(';').length : 0
+        localStorageTokens: {
+          admin: !!localStorage.getItem('adminToken'),
+          staff: !!localStorage.getItem('staffToken'),
+          distributor: !!localStorage.getItem('distributorToken')
+        }
       }
     });
 
