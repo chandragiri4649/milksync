@@ -66,6 +66,58 @@ router.post('/test-session', async (req, res) => {
   }
 });
 
+// Cookie test endpoint - manually set a simple cookie
+router.get('/test-cookie', (req, res) => {
+  console.log('🍪 Setting test cookie...');
+  
+  // Set a simple test cookie with same settings as session cookie
+  res.cookie('test-cookie', 'test-value-123', {
+    httpOnly: false, // Allow JS access for testing
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 60 * 60 * 1000, // 1 hour
+    path: '/'
+  });
+  
+  console.log('🍪 Test cookie set with options:', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 60 * 60 * 1000,
+    path: '/'
+  });
+  
+  res.json({ 
+    message: 'Test cookie set',
+    cookieValue: 'test-value-123',
+    cookieOptions: {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 60 * 60 * 1000,
+      path: '/'
+    }
+  });
+});
+
+// Check if test cookie is received
+router.get('/check-cookie', (req, res) => {
+  console.log('🔍 Checking cookies:', {
+    allCookies: req.cookies,
+    testCookie: req.cookies['test-cookie'],
+    sessionCookie: req.cookies['milksync-session'],
+    rawCookieHeader: req.headers.cookie
+  });
+  
+  res.json({
+    message: 'Cookie check',
+    cookies: req.cookies || {},
+    testCookie: req.cookies['test-cookie'] || 'Not found',
+    sessionCookie: req.cookies['milksync-session'] || 'Not found',
+    rawCookieHeader: req.headers.cookie || 'No cookie header'
+  });
+});
+
 // Session check without authentication middleware for debugging
 router.get('/session-info', async (req, res) => {
   try {

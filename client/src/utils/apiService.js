@@ -50,7 +50,14 @@ class ApiService {
       headers: finalOptions.headers,
       cookies: document.cookie || 'No cookies found',
       domain: window.location.hostname,
-      crossOrigin: new URL(url).hostname !== window.location.hostname
+      crossOrigin: new URL(url).hostname !== window.location.hostname,
+      // Enhanced cookie debugging
+      cookieDetails: {
+        allCookies: document.cookie,
+        sessionCookie: document.cookie.includes('milksync-session'),
+        testCookie: document.cookie.includes('test-cookie'),
+        cookieCount: document.cookie ? document.cookie.split(';').length : 0
+      }
     });
 
     try {
@@ -158,6 +165,40 @@ class ApiService {
       localStorage.removeItem('distributorToken');
     } catch (error) {
       console.error('Logout failed:', error);
+    }
+  }
+
+  // Cookie testing methods for debugging
+  async testCookie() {
+    try {
+      console.log('🍪 Testing cookie setting...');
+      const response = await this.get('/test-cookie');
+      console.log('🍪 Test cookie response:', response);
+      
+      // Check if cookie was set
+      setTimeout(() => {
+        console.log('🍪 Cookies after test-cookie call:', {
+          allCookies: document.cookie,
+          hasTestCookie: document.cookie.includes('test-cookie')
+        });
+      }, 100);
+      
+      return response;
+    } catch (error) {
+      console.error('Cookie test failed:', error);
+      return null;
+    }
+  }
+
+  async checkCookie() {
+    try {
+      console.log('🔍 Checking cookies on server...');
+      const response = await this.get('/check-cookie');
+      console.log('🔍 Cookie check response:', response);
+      return response;
+    } catch (error) {
+      console.error('Cookie check failed:', error);
+      return null;
     }
   }
 }
